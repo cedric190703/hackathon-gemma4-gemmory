@@ -1,4 +1,4 @@
-# Gemmory — private, local AI memory vault for Android
+# Gemmory - private, local AI memory vault for Android
 
 Gemmory is a native Android app for building a **private AI memory vault that runs
 locally on your phone**. It uses **Gemma 4 E2B entirely on device** with
@@ -178,7 +178,7 @@ device procedure and the manual checklist.
 ## Project status
 
 Everything in this repository builds, passes its test suite, and is wired to the
-real LiteRT-LM runtime — there is no mocked inference path in the shipped code.
+real LiteRT-LM runtime; there is no mocked inference path in the shipped code.
 
 **Device verification is still outstanding**: no Android phone was available while
 this was written, so [docs/BENCHMARKS.md](docs/BENCHMARKS.md) contains an empty
