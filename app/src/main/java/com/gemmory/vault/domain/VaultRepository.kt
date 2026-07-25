@@ -11,12 +11,45 @@ data class VaultAnswerContext(
     val markdown: String,
 )
 
+data class VaultProcessingInboxEntry(
+    val id: String,
+    val text: String,
+)
+
+data class VaultProcessingExistingNote(
+    val noteId: String,
+    val title: String,
+    val path: String,
+    val tags: List<String>,
+    val aliases: List<String>,
+)
+
+data class ProcessedVaultNoteDraft(
+    val title: String,
+    val sourceInboxIds: List<String>,
+    val bodyMarkdown: String,
+    val tags: List<String> = emptyList(),
+    val aliases: List<String> = emptyList(),
+)
+
 interface VaultAnswerGenerator {
     /**
      * Returns null when the local model is unavailable or declines to answer, so
      * callers can preserve the deterministic search-only fallback.
      */
     suspend fun answer(question: String, contexts: List<VaultAnswerContext>): String?
+}
+
+interface VaultNoteProcessor {
+    /**
+     * Returns null when the local model is unavailable or generation fails. Note
+     * processing intentionally has no deterministic fallback because it is
+     * expected to rewrite and connect thoughts.
+     */
+    suspend fun processInbox(
+        entries: List<VaultProcessingInboxEntry>,
+        existingNotes: List<VaultProcessingExistingNote>,
+    ): List<ProcessedVaultNoteDraft>?
 }
 
 interface VaultRepository {
