@@ -22,6 +22,7 @@ import com.gemmory.vault.domain.ApplyResult
 import com.gemmory.vault.domain.ProposedVaultChangeSet
 import com.gemmory.vault.domain.UndoResult
 import com.gemmory.vault.domain.VaultEntry
+import com.gemmory.vault.domain.VaultGraph
 import com.gemmory.vault.domain.VaultLink
 import com.gemmory.vault.domain.VaultNote
 import com.gemmory.vault.domain.VaultOperation
@@ -243,6 +244,10 @@ class FakeVaultRepository(
     override fun observeInbox(): Flow<List<InboxEntry>> = flowOf(emptyList())
 
     override fun observeNotes(): Flow<List<VaultEntry>> = flowOf(emptyList())
+
+    override fun observeAllLinks(): Flow<List<VaultLink>> = flowOf(emptyList())
+
+    override fun observeGraph(): Flow<VaultGraph> = flowOf(VaultGraph())
 
     override fun observeBacklinks(noteId: String): Flow<List<VaultLink>> = flowOf(emptyList())
 
