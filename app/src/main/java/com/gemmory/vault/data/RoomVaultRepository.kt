@@ -16,6 +16,8 @@ import com.gemmory.vault.domain.ApplyResult
 import com.gemmory.vault.domain.LinkResolutionStatus
 import com.gemmory.vault.domain.ProposedVaultChangeSet
 import com.gemmory.vault.domain.UndoResult
+import com.gemmory.vault.domain.VaultAnswerContext
+import com.gemmory.vault.domain.VaultAnswerGenerator
 import com.gemmory.vault.domain.VaultEntry
 import com.gemmory.vault.domain.VaultGraph
 import com.gemmory.vault.domain.VaultGraphEdge
@@ -29,6 +31,7 @@ import com.gemmory.vault.domain.VaultSearchResult
 import com.gemmory.vault.parser.MarkdownFrontmatterParser
 import com.gemmory.vault.parser.WikiLinkParser
 import com.gemmory.vault.storage.MarkdownVaultStorage
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -42,6 +45,7 @@ class RoomVaultRepository(
     private val dao: KnowledgeDao,
     private val storage: MarkdownVaultStorage,
     private val dispatchers: AppDispatchers,
+    private val answerGenerator: VaultAnswerGenerator? = null,
 ) : VaultRepository {
 
     override fun observeInbox(): Flow<List<InboxEntry>> =
@@ -399,24 +403,25 @@ class RoomVaultRepository(
         }.sortedByDescending { it.score }.take(limit)
     }
 
-    override suspend fun answerVaultQuestion(conversationId: String, question: String): String =
+    override suspend fun answerVaultQuestion(conversationId: String, question: String): String {
+        val clean = question.trim()
+        if (clean.isBlank()) return ""
+
+        val now = System.currentTimeMillis()
         withContext(dispatchers.io) {
-            val now = System.currentTimeMillis()
             dao.upsertKnowledgeChat(KnowledgeChatEntity(conversationId, now, now))
             dao.upsertKnowledgeMessage(
-                KnowledgeMessageEntity(UUID.randomUUID().toString(), conversationId, "USER", question, now, "", true),
+                KnowledgeMessageEntity(UUID.randomUUID().toString(), conversationId, "USER", clean, now, "", true),
             )
-            val results = search(question, limit = 5)
-            val answer = if (results.isEmpty()) {
-                "I could not find this in your vault."
-            } else {
-                buildString {
-                    append("According to your vault, the closest relevant notes are:\n\n")
-                    results.forEach { result ->
-                        append("- ${result.snippet.ifBlank { result.title }} [[${result.title}]]\n")
-                    }
-                }
-            }
+        }
+
+        val contexts = answerContexts(clean)
+        val generated = generateAnswer(clean, contexts)
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+        val answer = generated ?: fallbackAnswer(contexts)
+
+        withContext(dispatchers.io) {
             dao.upsertKnowledgeMessage(
                 KnowledgeMessageEntity(
                     id = UUID.randomUUID().toString(),
@@ -424,11 +429,50 @@ class RoomVaultRepository(
                     role = "ASSISTANT",
                     content = answer,
                     createdAt = System.currentTimeMillis(),
-                    citationNoteIds = results.joinToString(",") { it.noteId },
-                    fullyGrounded = results.isNotEmpty(),
+                    citationNoteIds = contexts.joinToString(",") { it.noteId },
+                    fullyGrounded = contexts.isNotEmpty(),
                 ),
             )
-            answer
+        }
+        return answer
+    }
+
+    private suspend fun answerContexts(question: String): List<VaultAnswerContext> {
+        val results = search(question, limit = 5)
+        return withContext(dispatchers.io) {
+            results.map { result ->
+                VaultAnswerContext(
+                    noteId = result.noteId,
+                    title = result.title,
+                    path = result.path,
+                    snippet = result.snippet,
+                    markdown = storage.read(result.path).orEmpty(),
+                )
+            }
+        }
+    }
+
+    private suspend fun generateAnswer(
+        question: String,
+        contexts: List<VaultAnswerContext>,
+    ): String? = try {
+        answerGenerator?.answer(question, contexts)
+    } catch (ce: CancellationException) {
+        throw ce
+    } catch (_: Throwable) {
+        null
+    }
+
+    private fun fallbackAnswer(contexts: List<VaultAnswerContext>): String =
+        if (contexts.isEmpty()) {
+            "I could not find this in your vault."
+        } else {
+            buildString {
+                append("According to your vault, the closest relevant notes are:\n\n")
+                contexts.forEach { context ->
+                    append("- ${context.snippet.ifBlank { context.title }} [[${context.title}]]\n")
+                }
+            }
         }
 
     private suspend fun validate(operations: List<VaultOperation>): List<String> {
