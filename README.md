@@ -1,28 +1,37 @@
-# Gemmory — fully local Gemma 4 E2B chat for Android
+# Gemmory — private, local AI memory vault for Android
 
-Gemmory is a native Android chat app that runs **Gemma 4 E2B entirely on the device**
-with [LiteRT-LM](https://ai.google.dev/edge/litert-lm). After the model is installed
-there is no network access at all: prompts, conversations and generated tokens never
-leave the phone, and the app works in airplane mode.
+Gemmory is a native Android app for building a **private AI memory vault that runs
+locally on your phone**. It uses **Gemma 4 E2B entirely on device** with
+[LiteRT-LM](https://ai.google.dev/edge/litert-lm), so your notes, conversations,
+vault links and generated answers stay in app-private storage.
 
-There is no backend, no cloud inference and no hidden fallback API.
+After the model is installed, the core AI experience works without network access:
+you can capture notes, organize them into a linked vault, ask questions over that
+vault and explore your memory graph in airplane mode.
+
+There is no backend, no cloud inference and no hidden fallback API. Gemmory is
+designed as a local-first personal memory system, not a cloud chatbot.
 
 ---
 
 ## What it does
 
+* Turn raw notes into a local, searchable memory vault.
+* Answer questions over your saved knowledge with local Gemma inference.
+* Keep notes, conversations, generated answers, backlinks and graph data on device.
+* Visualize the vault as an interactive graph with linked notes and clusters.
 * Install the model by **downloading** it from a configurable URL or **importing**
   a `.litertlm` file through the Storage Access Framework.
 * Verify the exact file size and SHA-256 digest before accepting the model.
 * Load Gemma 4 E2B once, off the main thread, and keep it loaded.
 * Multi-turn chat with **incremental token streaming**.
 * **Stop** a running generation and immediately start another.
-* Persist conversations in Room, in app-private storage.
+* Persist conversations and vault data in Room, in app-private storage.
 * Explicit, actionable states for every failure mode.
 * Debug-only diagnostics panel with the backend actually selected at runtime.
 
 Deliberately **out of scope** for this version: images, audio, function calling,
-accounts, cloud sync, RAG, voice input, and rich Markdown rendering.
+accounts, cloud sync, voice input, and rich Markdown rendering.
 
 ---
 
@@ -137,17 +146,19 @@ device procedure and the manual checklist.
 
 ## Privacy
 
+* Gemmory is a **private, local AI memory vault**: inference, vault search,
+  conversation storage and graph exploration happen on the device.
 * Inference is 100 % local. Verify it yourself: install the model, enable airplane
-  mode, and keep chatting.
+  mode, and keep chatting with your vault.
 * The **only** network access in the app is downloading the model from the URL shown
   in Settings. That is why `INTERNET` is declared in the manifest.
 * No analytics SDKs, no crash reporters, no telemetry.
-* Conversation contents are never written to logcat. Only states, sizes, durations
-  and error classes are logged, and only in debug builds.
+* Conversation and vault contents are never written to logcat. Only states, sizes,
+  durations and error classes are logged, and only in debug builds.
 * In debug builds, `NetworkAccessAuditor` logs a loud warning for any outbound
   OkHttp request to an unexpected host.
-* Conversations live in app-private storage and are excluded from cloud backup and
-  device-to-device transfer.
+* Conversations and vault notes live in app-private storage and are excluded from
+  cloud backup and device-to-device transfer.
 
 ---
 
