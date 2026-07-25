@@ -91,6 +91,12 @@ interface KnowledgeDao {
     @Query("SELECT * FROM vault_links WHERE source_note_id = :noteId ORDER BY start_offset ASC")
     fun observeOutgoingLinks(noteId: String): Flow<List<VaultLinkEntity>>
 
+    @Query("SELECT * FROM vault_links WHERE target_note_id = :noteId ORDER BY raw_target ASC")
+    suspend fun backlinks(noteId: String): List<VaultLinkEntity>
+
+    @Query("SELECT * FROM vault_links WHERE source_note_id = :noteId ORDER BY start_offset ASC")
+    suspend fun outgoingLinks(noteId: String): List<VaultLinkEntity>
+
     @Query("SELECT * FROM vault_links ORDER BY source_note_id ASC, start_offset ASC")
     fun observeLinks(): Flow<List<VaultLinkEntity>>
 

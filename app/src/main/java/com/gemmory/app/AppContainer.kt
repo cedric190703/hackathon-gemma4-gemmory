@@ -30,6 +30,7 @@ import com.gemmory.vault.data.RoomVaultRepository
 import com.gemmory.vault.domain.VaultRepository
 import com.gemmory.vault.storage.MarkdownVaultStorage
 import com.gemmory.vaultagent.LocalLlmVaultAnswerGenerator
+import com.gemmory.vaultagent.LocalLlmVaultNoteProcessor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
@@ -105,6 +106,7 @@ class AppContainer(private val application: Application) {
             storage = vaultStorage,
             dispatchers = dispatchers,
             answerGenerator = LocalLlmVaultAnswerGenerator(engineController),
+            noteProcessor = LocalLlmVaultNoteProcessor(engineController),
         )
     }
 

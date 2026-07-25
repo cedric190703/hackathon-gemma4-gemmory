@@ -128,7 +128,7 @@ fun ChatScreen(
                 placeholder = when (state.topLevelState) {
                     TopLevelState.MODEL_LOADING -> "Loading the model…"
                     TopLevelState.GENERATING -> "Generating…"
-                    else -> "Message Gemmory"
+                    else -> "Ask Gemmory about processed notes"
                 },
                 blocksWorkflow = blocksWorkflow,
                 onOpenSessions = onOpenSessions,
@@ -252,7 +252,7 @@ private fun ChatBottomBar(
                 FooterActionButton(
                     onClick = onNewConversation,
                     enabled = !blocksWorkflow,
-                    contentDescription = "New note",
+                    contentDescription = "New question",
                     icon = Icons.Filled.Add,
                     primary = true,
                     modifier = Modifier.testTag(TAG_NEW_CONVERSATION),

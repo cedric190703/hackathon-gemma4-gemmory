@@ -131,6 +131,7 @@ fun GemmoryNavHost(viewModel: ChatViewModel, knowledgeViewModel: KnowledgeViewMo
                     },
                     onApply = knowledgeViewModel::applyPending,
                     onReject = knowledgeViewModel::rejectPending,
+                    onBack = { navController.popBackStack() },
                 )
             }
 
@@ -142,6 +143,7 @@ fun GemmoryNavHost(viewModel: ChatViewModel, knowledgeViewModel: KnowledgeViewMo
                     onDeleteNote = knowledgeViewModel::deleteNote,
                     onOpenGraph = { context.startActivity(Intent(context, VaultGraphActivity::class.java)) },
                     onUndo = knowledgeViewModel::undoLatest,
+                    onBack = { navController.popBackStack() },
                 )
             }
 
