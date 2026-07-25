@@ -1,6 +1,7 @@
 package com.gemmory.chat.presentation.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,6 +10,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -28,15 +35,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gemmory.chat.domain.ChatMessage
 import com.gemmory.chat.domain.MessageRole
 import com.gemmory.chat.domain.MessageStatus
 import com.gemmory.ui.theme.GemmaMark
+
+const val TAG_THINKING_INDICATOR = "thinking_indicator"
 
 /**
  * One chat bubble.
@@ -124,11 +136,7 @@ fun MessageBubble(
                         color = foreground,
                     )
                 } else if (message.status == MessageStatus.GENERATING) {
-                    Text(
-                        text = "…",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = foreground,
-                    )
+                    ThinkingIndicator(color = foreground)
                 }
             }
 
@@ -183,6 +191,47 @@ fun MessageBubble(
                 }
             },
         )
+    }
+}
+
+/** Animated placeholder shown while the assistant is preparing its first token. */
+@Composable
+private fun ThinkingIndicator(
+    color: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier,
+) {
+    val transition = rememberInfiniteTransition(label = "thinking-indicator")
+
+    Row(
+        modifier = modifier
+            .testTag(TAG_THINKING_INDICATOR)
+            .semantics { contentDescription = "Thinking" },
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        repeat(3) { index ->
+            val emphasis by transition.animateFloat(
+                initialValue = 0.35f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(
+                        durationMillis = 360,
+                        delayMillis = index * 140,
+                        easing = FastOutSlowInEasing,
+                    ),
+                    repeatMode = RepeatMode.Reverse,
+                ),
+                label = "thinking-dot-$index",
+            )
+            Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .scale(0.75f + (emphasis * 0.25f))
+                    .alpha(emphasis)
+                    .clip(RoundedCornerShape(50))
+                    .background(color),
+            )
+        }
     }
 }
 

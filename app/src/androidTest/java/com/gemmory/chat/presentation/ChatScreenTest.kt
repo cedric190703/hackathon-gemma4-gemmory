@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -18,6 +19,7 @@ import com.gemmory.chat.presentation.components.TAG_INPUT_FIELD
 import com.gemmory.chat.presentation.components.TAG_INSTALL_PANEL
 import com.gemmory.chat.presentation.components.TAG_SEND_BUTTON
 import com.gemmory.chat.presentation.components.TAG_STOP_BUTTON
+import com.gemmory.chat.presentation.components.TAG_THINKING_INDICATOR
 import com.gemmory.inference.EngineController
 import com.gemmory.inference.FakeLlmEngine
 import com.gemmory.inference.InferenceError
@@ -148,6 +150,10 @@ class ChatScreenTest {
         composeRule.waitUntil(5_000) { viewModel.uiState.value.isGenerating }
         composeRule.onNodeWithTag(TAG_STOP_BUTTON).assertIsDisplayed()
         composeRule.onNodeWithTag(TAG_INPUT_FIELD).assertIsNotEnabled()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag(TAG_THINKING_INDICATOR).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag(TAG_THINKING_INDICATOR).assertIsDisplayed()
 
         composeRule.onNodeWithTag(TAG_STOP_BUTTON).performClick()
         composeRule.waitUntil(5_000) { !viewModel.uiState.value.isGenerating }
