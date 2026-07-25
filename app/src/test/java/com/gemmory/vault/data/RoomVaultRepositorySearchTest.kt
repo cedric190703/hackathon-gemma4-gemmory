@@ -3,12 +3,14 @@ package com.gemmory.vault.data
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.gemmory.testing.TestDispatchers
+import com.gemmory.vault.domain.VaultAnswerGenerator
+import com.gemmory.vault.domain.VaultAnswerTools
+import com.gemmory.vault.domain.VaultGeneratedAnswer
 import com.gemmory.vault.domain.VaultOperation
 import com.gemmory.vault.storage.MarkdownVaultStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import org.junit.After
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -28,6 +30,19 @@ class RoomVaultRepositorySearchTest {
     private lateinit var database: KnowledgeDatabase
     private lateinit var repository: RoomVaultRepository
 
+    /** Reads notes back through the real [VaultAnswerTools] the repository hands the generator. */
+    private class FakeAnswerGenerator : VaultAnswerGenerator {
+        override suspend fun answer(question: String, tools: VaultAnswerTools): VaultGeneratedAnswer? {
+            val hits = tools.searchNotes(question, limit = 5)
+            if (hits.isEmpty()) return null
+            val notes = hits.mapNotNull { tools.readNote(it.noteId) }
+            return VaultGeneratedAnswer(
+                content = notes.joinToString("\n") { it.note.markdown },
+                citationNoteIds = notes.map { it.note.id },
+            )
+        }
+    }
+
     @Before
     fun setUp() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
@@ -40,6 +55,7 @@ class RoomVaultRepositorySearchTest {
             dao = database.knowledgeDao(),
             storage = storage,
             dispatchers = TestDispatchers(Dispatchers.Unconfined),
+            answerGenerator = FakeAnswerGenerator(),
         )
     }
 
@@ -91,8 +107,7 @@ class RoomVaultRepositorySearchTest {
 
         val answer = repository.answerVaultQuestion("conversation-1", "What's the deadline: Monday?")
 
-        assertFalse(answer.contains("I could not find this in your vault."))
-        assertTrue(answer.contains("Project Deadline"))
+        assertTrue("expected the note markdown to reach the answer, got: $answer", answer.contains("Project Deadline"))
     }
 
     @Test

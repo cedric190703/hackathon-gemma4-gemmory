@@ -2,8 +2,6 @@ package com.gemmory.chat.presentation.components
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
@@ -15,7 +13,6 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -40,52 +37,43 @@ fun ChatInputBar(
     placeholder: String,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .imePadding(),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-        tonalElevation = 0.dp,
+    Row(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.Bottom,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalAlignment = Alignment.Bottom,
-        ) {
-            OutlinedTextField(
-                value = value,
-                onValueChange = onValueChange,
-                enabled = enabled,
-                modifier = Modifier.weight(1f).testTag(TAG_INPUT_FIELD),
-                placeholder = { Text(placeholder) },
-                maxLines = 5,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = { if (enabled) onSend() }),
-            )
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            enabled = enabled,
+            modifier = Modifier.weight(1f).testTag(TAG_INPUT_FIELD),
+            placeholder = { Text(placeholder) },
+            maxLines = 5,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+            keyboardActions = KeyboardActions(onSend = { if (enabled) onSend() }),
+        )
 
-            if (isGenerating) {
-                FilledIconButton(
-                    onClick = onStop,
-                    modifier = Modifier.padding(start = 8.dp).size(52.dp).testTag(TAG_STOP_BUTTON),
-                ) {
-                    Icon(
-                        Icons.Filled.Stop,
-                        contentDescription = "Stop generating",
-                        tint = Color.White,
-                    )
-                }
-            } else {
-                FilledIconButton(
-                    onClick = onSend,
-                    enabled = enabled && value.isNotBlank(),
-                    modifier = Modifier.padding(start = 8.dp).size(52.dp).testTag(TAG_SEND_BUTTON),
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Send message",
-                        tint = Color.White,
-                    )
-                }
+        if (isGenerating) {
+            FilledIconButton(
+                onClick = onStop,
+                modifier = Modifier.padding(start = 10.dp).size(52.dp).testTag(TAG_STOP_BUTTON),
+            ) {
+                Icon(
+                    Icons.Filled.Stop,
+                    contentDescription = "Stop generating",
+                    tint = Color.White,
+                )
+            }
+        } else {
+            FilledIconButton(
+                onClick = onSend,
+                enabled = enabled && value.isNotBlank(),
+                modifier = Modifier.padding(start = 10.dp).size(52.dp).testTag(TAG_SEND_BUTTON),
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.Send,
+                    contentDescription = "Send message",
+                    tint = Color.White,
+                )
             }
         }
     }

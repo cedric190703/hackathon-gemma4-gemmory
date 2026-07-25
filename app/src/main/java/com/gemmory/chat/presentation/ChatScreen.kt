@@ -7,7 +7,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,9 +23,10 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -41,6 +45,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.gemmory.chat.domain.MessageStatus
 import com.gemmory.chat.presentation.components.ChatInputBar
 import com.gemmory.chat.presentation.components.ContextTrimmedNotice
@@ -122,7 +128,7 @@ fun ChatScreen(
                 placeholder = when (state.topLevelState) {
                     TopLevelState.MODEL_LOADING -> "Loading the model…"
                     TopLevelState.GENERATING -> "Generating…"
-                    else -> "Message Gemmory"
+                    else -> "Ask Gemmory about processed notes"
                 },
                 blocksWorkflow = blocksWorkflow,
                 onOpenSessions = onOpenSessions,
@@ -188,13 +194,22 @@ private fun ChatBottomBar(
     onNewConversation: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        tonalElevation = 0.dp,
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .imePadding()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
-        Column(Modifier.fillMaxWidth()) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            shape = RoundedCornerShape(24.dp),
+            tonalElevation = 6.dp,
+            shadowElevation = 12.dp,
+        ) {
+            Column(Modifier.fillMaxWidth()) {
             if (showInput) {
                 ChatInputBar(
                     value = inputValue,
@@ -207,68 +222,70 @@ private fun ChatBottomBar(
                 )
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 12.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+            )
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(
+                FooterActionButton(
                     onClick = onOpenSessions,
                     enabled = !blocksWorkflow,
-                    modifier = Modifier.size(52.dp),
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.List,
-                        contentDescription = "Notes",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-                IconButton(
+                    contentDescription = "Notes",
+                    icon = Icons.AutoMirrored.Filled.List,
+                )
+                FooterActionButton(
                     onClick = onOpenInbox,
                     enabled = !blocksWorkflow,
-                    modifier = Modifier.size(52.dp),
-                ) {
-                    Icon(
-                        Icons.Filled.Email,
-                        contentDescription = "Inbox",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-                IconButton(
+                    contentDescription = "Inbox",
+                    icon = Icons.Filled.Email,
+                )
+                FooterActionButton(
                     onClick = onOpenVault,
                     enabled = !blocksWorkflow,
-                    modifier = Modifier.size(52.dp),
-                ) {
-                    Icon(
-                        Icons.Filled.Folder,
-                        contentDescription = "Vault",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-                IconButton(
+                    contentDescription = "Vault",
+                    icon = Icons.Filled.Folder,
+                )
+                FooterActionButton(
                     onClick = onNewConversation,
                     enabled = !blocksWorkflow,
-                    modifier = Modifier.size(52.dp).testTag(TAG_NEW_CONVERSATION),
-                ) {
-                    Icon(
-                        Icons.Filled.Add,
-                        contentDescription = "New note",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-                IconButton(
+                    contentDescription = "New question",
+                    icon = Icons.Filled.Add,
+                    primary = true,
+                    modifier = Modifier.testTag(TAG_NEW_CONVERSATION),
+                )
+                FooterActionButton(
                     onClick = onOpenSettings,
                     enabled = !blocksWorkflow,
-                    modifier = Modifier.size(52.dp),
-                ) {
-                    Icon(
-                        Icons.Filled.Settings,
-                        contentDescription = "Settings",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
+                    contentDescription = "Settings",
+                    icon = Icons.Filled.Settings,
+                )
             }
+        }
+        }
+    }
+}
+
+@Composable
+private fun FooterActionButton(
+    onClick: () -> Unit,
+    enabled: Boolean,
+    contentDescription: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    primary: Boolean = false,
+    modifier: Modifier = Modifier,
+) {
+    val buttonModifier = modifier.size(48.dp)
+    if (primary) {
+        FilledIconButton(onClick = onClick, enabled = enabled, modifier = buttonModifier, shape = CircleShape) {
+            Icon(icon, contentDescription = contentDescription)
+        }
+    } else {
+        FilledTonalIconButton(onClick = onClick, enabled = enabled, modifier = buttonModifier, shape = CircleShape) {
+            Icon(icon, contentDescription = contentDescription)
         }
     }
 }
