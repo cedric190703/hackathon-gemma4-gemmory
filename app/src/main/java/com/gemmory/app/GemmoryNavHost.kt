@@ -115,6 +115,7 @@ fun GemmoryNavHost(viewModel: ChatViewModel, knowledgeViewModel: KnowledgeViewMo
                     onProcessAll = knowledgeViewModel::processAll,
                     onApply = knowledgeViewModel::applyPending,
                     onReject = knowledgeViewModel::rejectPending,
+                    onBack = { navController.popBackStack() },
                 )
             }
 
@@ -124,6 +125,7 @@ fun GemmoryNavHost(viewModel: ChatViewModel, knowledgeViewModel: KnowledgeViewMo
                     onSearch = knowledgeViewModel::setSearchQuery,
                     onOpenNote = knowledgeViewModel::openNote,
                     onUndo = knowledgeViewModel::undoLatest,
+                    onBack = { navController.popBackStack() },
                 )
             }
 
@@ -131,6 +133,7 @@ fun GemmoryNavHost(viewModel: ChatViewModel, knowledgeViewModel: KnowledgeViewMo
                 AskVaultScreen(
                     state = knowledgeState,
                     onAsk = knowledgeViewModel::ask,
+                    onBack = { navController.popBackStack() },
                 )
             }
 
