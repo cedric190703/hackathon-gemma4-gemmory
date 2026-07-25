@@ -19,7 +19,9 @@ interface ChatRepository {
     suspend fun createSession(title: String = DEFAULT_TITLE): ChatSession
     suspend fun mostRecentSessionId(): String?
     suspend fun listMessages(conversationId: String): List<ChatMessage>
+    suspend fun renameSession(conversationId: String, title: String)
     suspend fun deleteSession(conversationId: String)
+    suspend fun deleteMessage(conversationId: String, messageId: String)
 
     suspend fun appendMessage(
         conversationId: String,
@@ -33,6 +35,12 @@ interface ChatRepository {
         content: String,
         status: MessageStatus,
         errorText: String? = null,
+    )
+
+    suspend fun updateMessageContent(
+        conversationId: String,
+        messageId: String,
+        content: String,
     )
 
     /** Demotes messages left mid-generation by a process death. */
@@ -81,8 +89,18 @@ class RoomChatRepository(
             messageDao.listForConversation(conversationId).map { it.toDomain() }
         }
 
+    override suspend fun renameSession(conversationId: String, title: String) = withContext(dispatchers.io) {
+        conversationDao.updateTitle(conversationId, title.toTitle(), now())
+    }
+
     override suspend fun deleteSession(conversationId: String) = withContext(dispatchers.io) {
         conversationDao.delete(conversationId)
+    }
+
+    override suspend fun deleteMessage(conversationId: String, messageId: String) = withContext(dispatchers.io) {
+        val timestamp = now()
+        messageDao.delete(messageId, conversationId)
+        conversationDao.touch(conversationId, timestamp)
     }
 
     override suspend fun appendMessage(
@@ -121,6 +139,16 @@ class RoomChatRepository(
         errorText: String?,
     ) = withContext(dispatchers.io) {
         messageDao.updateContentAndStatus(messageId, content, status.name, errorText)
+    }
+
+    override suspend fun updateMessageContent(
+        conversationId: String,
+        messageId: String,
+        content: String,
+    ) = withContext(dispatchers.io) {
+        val timestamp = now()
+        messageDao.updateContent(messageId, conversationId, content)
+        conversationDao.touch(conversationId, timestamp)
     }
 
     override suspend fun repairUnfinishedMessages(): Int = withContext(dispatchers.io) {

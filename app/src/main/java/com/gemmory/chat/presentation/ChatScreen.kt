@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -19,6 +21,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -62,41 +65,54 @@ fun ChatScreen(
     onCancelInstall: () -> Unit,
     onRemoveModel: () -> Unit,
     onLoadModel: () -> Unit,
+    onEditMessage: (String, String, String) -> Unit,
+    onDeleteMessage: (String, String) -> Unit,
     onRecoveryAction: (RecoveryAction) -> Unit,
     onDismissBanner: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val blocksWorkflow = state.topLevelState == TopLevelState.MODEL_LOADING
+
     Scaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = state.title.ifBlank { "Gemmory" },
-                        maxLines = 1,
-                        style = MaterialTheme.typography.titleMedium,
-                    )
+                    Column {
+                        Text(
+                            text = state.title.ifBlank { "Ask Vault" },
+                            maxLines = 1,
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            text = state.workflowLabel(),
+                            maxLines = 1,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onOpenSessions) {
-                        Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Conversations")
+                    IconButton(onClick = onOpenSessions, enabled = !blocksWorkflow) {
+                        Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Notes")
                     }
                 },
                 actions = {
                     IconButton(
                         onClick = onNewConversation,
+                        enabled = !blocksWorkflow,
                         modifier = Modifier.testTag(TAG_NEW_CONVERSATION),
                     ) {
-                        Icon(Icons.Filled.Add, contentDescription = "New conversation")
+                        Icon(Icons.Filled.Add, contentDescription = "New note")
                     }
-                    IconButton(onClick = onOpenSettings) {
+                    IconButton(onClick = onOpenSettings, enabled = !blocksWorkflow) {
                         Icon(Icons.Filled.Settings, contentDescription = "Settings")
                     }
                 },
             )
         },
         bottomBar = {
-            if (state.showsChat) {
+            if (state.showsChat && !blocksWorkflow) {
                 ChatInputBar(
                     value = inputValue,
                     onValueChange = onInputChange,
@@ -107,7 +123,7 @@ fun ChatScreen(
                     placeholder = when (state.topLevelState) {
                         TopLevelState.MODEL_LOADING -> "Loading the model…"
                         TopLevelState.GENERATING -> "Generating…"
-                        else -> "Message Gemma 4"
+                        else -> "Add a note or ask your vault"
                     },
                 )
             }
@@ -122,19 +138,15 @@ fun ChatScreen(
                 )
             }
 
-            if (state.showsChat) {
-                if (state.topLevelState == TopLevelState.MODEL_LOADING) {
-                    LinearProgressIndicator(Modifier.fillMaxWidth())
-                    Text(
-                        text = "Loading Gemma 4 E2B into memory…",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    )
-                }
+            if (blocksWorkflow) {
+                ModelLoadingPanel(Modifier.weight(1f))
+            } else if (state.showsChat) {
                 DiagnosticsPanel(state.diagnostics)
                 MessageList(
                     state = state,
                     streamingText = streamingText,
+                    onEditMessage = onEditMessage,
+                    onDeleteMessage = onDeleteMessage,
                     modifier = Modifier.weight(1f),
                 )
             } else {
@@ -156,9 +168,33 @@ fun ChatScreen(
 }
 
 @Composable
+private fun ModelLoadingPanel(modifier: Modifier = Modifier) {
+    Surface(modifier = modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Spacer(Modifier.weight(1f))
+            Text("Loading Gemma 4 E2B", style = MaterialTheme.typography.headlineSmall)
+            Spacer(Modifier.height(16.dp))
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = "The vault unlocks when the local model is ready.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
 private fun MessageList(
     state: ChatUiState,
     streamingText: String,
+    onEditMessage: (String, String, String) -> Unit,
+    onDeleteMessage: (String, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -209,10 +245,35 @@ private fun MessageList(
         items(items = state.messages, key = { it.id }) { message ->
             val isStreaming = message.id == state.streamingMessageId &&
                 message.status == MessageStatus.GENERATING
+            val canManageNotes = state.topLevelState == TopLevelState.CHAT_READY
             MessageBubble(
                 message = message,
                 textProvider = { if (isStreaming) streamingText else message.content },
+                onEdit = if (canManageNotes) {
+                    { content -> onEditMessage(message.id, message.conversationId, content) }
+                } else {
+                    null
+                },
+                onDelete = if (canManageNotes) {
+                    { onDeleteMessage(message.id, message.conversationId) }
+                } else {
+                    null
+                },
             )
         }
     }
+}
+
+private fun ChatUiState.workflowLabel(): String = when (topLevelState) {
+    TopLevelState.MODEL_MISSING -> "Install model"
+    TopLevelState.MODEL_IMPORTING -> "Importing model"
+    TopLevelState.MODEL_DOWNLOADING -> "Downloading model"
+    TopLevelState.MODEL_VERIFYING -> "Verifying model"
+    TopLevelState.MODEL_READY_UNLOADED,
+    TopLevelState.MODEL_LOADING,
+    -> "Preparing local model"
+    TopLevelState.CHAT_READY -> "Notes and questions"
+    TopLevelState.GENERATING -> "Answering"
+    TopLevelState.RECOVERABLE_ERROR -> "Action needed"
+    TopLevelState.UNSUPPORTED_DEVICE -> "Unsupported device"
 }

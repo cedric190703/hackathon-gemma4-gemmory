@@ -38,7 +38,7 @@ data class ErrorBanner(
 )
 
 data class ChatUiState(
-    val topLevelState: TopLevelState = TopLevelState.MODEL_MISSING,
+    val topLevelState: TopLevelState = TopLevelState.MODEL_LOADING,
     val installState: ModelInstallState? = null,
     val engineState: EngineState = EngineState.Idle,
     val conversationId: String? = null,

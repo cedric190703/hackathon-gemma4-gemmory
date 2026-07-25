@@ -60,9 +60,26 @@ class FakeChatRepository : ChatRepository {
     override suspend fun listMessages(conversationId: String): List<ChatMessage> =
         messages.value.filter { it.conversationId == conversationId }.sortedBy { it.orderIndex }
 
+    override suspend fun renameSession(conversationId: String, title: String) {
+        sessions.value = sessions.value.map { session ->
+            if (session.id == conversationId) {
+                session.copy(title = title, updatedAt = clock++)
+            } else {
+                session
+            }
+        }
+    }
+
     override suspend fun deleteSession(conversationId: String) {
         sessions.value = sessions.value.filterNot { it.id == conversationId }
         messages.value = messages.value.filterNot { it.conversationId == conversationId }
+    }
+
+    override suspend fun deleteMessage(conversationId: String, messageId: String) {
+        messages.value = messages.value.filterNot { it.id == messageId && it.conversationId == conversationId }
+        sessions.value = sessions.value.map { session ->
+            if (session.id == conversationId) session.copy(updatedAt = clock++) else session
+        }
     }
 
     override suspend fun appendMessage(
@@ -98,6 +115,23 @@ class FakeChatRepository : ChatRepository {
             } else {
                 message
             }
+        }
+    }
+
+    override suspend fun updateMessageContent(
+        conversationId: String,
+        messageId: String,
+        content: String,
+    ) {
+        messages.value = messages.value.map { message ->
+            if (message.id == messageId && message.conversationId == conversationId) {
+                message.copy(content = content)
+            } else {
+                message
+            }
+        }
+        sessions.value = sessions.value.map { session ->
+            if (session.id == conversationId) session.copy(updatedAt = clock++) else session
         }
     }
 

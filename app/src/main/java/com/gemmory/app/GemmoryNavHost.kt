@@ -60,6 +60,8 @@ fun GemmoryNavHost(viewModel: ChatViewModel) {
                 onCancelInstall = viewModel::cancelInstall,
                 onRemoveModel = viewModel::removeModel,
                 onLoadModel = viewModel::retryLoad,
+                onEditMessage = viewModel::editMessage,
+                onDeleteMessage = viewModel::deleteMessage,
                 onRecoveryAction = { action ->
                     if (action == com.gemmory.chat.presentation.RecoveryAction.IMPORT_FILE) {
                         importLauncher.launch(arrayOf("*/*"))
@@ -79,6 +81,7 @@ fun GemmoryNavHost(viewModel: ChatViewModel) {
                     viewModel.openConversation(id)
                     navController.popBackStack()
                 },
+                onRename = viewModel::renameConversation,
                 onDelete = viewModel::deleteConversation,
                 onBack = { navController.popBackStack() },
             )

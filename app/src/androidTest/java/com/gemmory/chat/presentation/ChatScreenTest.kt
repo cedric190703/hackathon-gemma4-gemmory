@@ -73,6 +73,8 @@ class ChatScreenTest {
                 onCancelInstall = viewModel::cancelInstall,
                 onRemoveModel = viewModel::removeModel,
                 onLoadModel = viewModel::retryLoad,
+                onEditMessage = viewModel::editMessage,
+                onDeleteMessage = viewModel::deleteMessage,
                 onRecoveryAction = viewModel::onRecoveryAction,
                 onDismissBanner = viewModel::dismissBanner,
             )
