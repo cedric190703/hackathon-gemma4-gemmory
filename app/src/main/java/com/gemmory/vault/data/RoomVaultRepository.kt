@@ -48,6 +48,9 @@ class RoomVaultRepository(
             notes.map { VaultEntry(it.id, it.path, it.title, it.archived) }
         }
 
+    override fun observeAllLinks(): Flow<List<VaultLink>> =
+        dao.observeAllLinks().map { links -> links.map { it.toDomain() } }
+
     override fun observeBacklinks(noteId: String): Flow<List<VaultLink>> =
         dao.observeBacklinks(noteId).map { links -> links.map { it.toDomain() } }
 
