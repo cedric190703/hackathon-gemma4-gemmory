@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 data class KnowledgeUiState(
     val inbox: List<InboxEntry> = emptyList(),
@@ -24,8 +25,15 @@ data class KnowledgeUiState(
     val searchResults: List<VaultSearchResult> = emptyList(),
     val selectedInboxIds: Set<String> = emptySet(),
     val pendingChangeSet: ProposedVaultChangeSet? = null,
+    val askMessages: List<AskMessage> = emptyList(),
     val busy: Boolean = false,
     val banner: String? = null,
+)
+
+data class AskMessage(
+    val id: String,
+    val role: String,
+    val text: String,
 )
 
 class KnowledgeViewModel(
@@ -37,8 +45,10 @@ class KnowledgeViewModel(
     private val searchResults = MutableStateFlow<List<VaultSearchResult>>(emptyList())
     private val selectedInboxIds = MutableStateFlow<Set<String>>(emptySet())
     private val pendingChangeSet = MutableStateFlow<ProposedVaultChangeSet?>(null)
+    private val askMessages = MutableStateFlow<List<AskMessage>>(emptyList())
     private val busy = MutableStateFlow(false)
     private val banner = MutableStateFlow<String?>(null)
+    private val conversationId = UUID.randomUUID().toString()
 
     private val inbox = repository.observeInbox()
     private val notes = repository.observeNotes()
@@ -46,8 +56,9 @@ class KnowledgeViewModel(
     val uiState: StateFlow<KnowledgeUiState> = combine(
         combine(inbox, notes, selectedNote, ::Triple),
         combine(searchQuery, searchResults, selectedInboxIds, ::Triple),
-        combine(pendingChangeSet, busy, banner, ::Triple),
-    ) { first, second, third ->
+        combine(pendingChangeSet, askMessages, busy, ::Triple),
+        banner,
+    ) { first, second, third, message ->
         KnowledgeUiState(
             inbox = first.first,
             notes = first.second,
@@ -56,8 +67,9 @@ class KnowledgeViewModel(
             searchResults = second.second,
             selectedInboxIds = second.third,
             pendingChangeSet = third.first,
-            busy = third.second,
-            banner = third.third,
+            askMessages = third.second,
+            busy = third.third,
+            banner = message,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), KnowledgeUiState())
 
@@ -133,6 +145,20 @@ class KnowledgeViewModel(
         searchQuery.value = query
         viewModelScope.launch {
             searchResults.value = repository.search(query, limit = 20)
+        }
+    }
+
+    fun ask(question: String) {
+        if (question.isBlank()) return
+        viewModelScope.launch {
+            askMessages.value += AskMessage(UUID.randomUUID().toString(), "USER", question)
+            busy.value = true
+            runCatching { repository.answerVaultQuestion(conversationId, question) }
+                .onSuccess { answer ->
+                    askMessages.value += AskMessage(UUID.randomUUID().toString(), "ASSISTANT", answer)
+                }
+                .onFailure { banner.value = it.message ?: "Unable to answer from the vault" }
+            busy.value = false
         }
     }
 

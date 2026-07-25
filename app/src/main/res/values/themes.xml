@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Gemmory" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.Gemmory" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#020713</item>
+        <item name="android:navigationBarColor">#020713</item>
+        <item name="android:statusBarColor">#00000000</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
 </resources>

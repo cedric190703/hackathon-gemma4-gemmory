@@ -33,7 +33,7 @@ fun DiagnosticsPanel(diagnostics: EngineDiagnostics, modifier: Modifier = Modifi
         modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
             .testTag(TAG_DIAGNOSTICS),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f),
         ),
     ) {
         Column(Modifier.padding(12.dp)) {

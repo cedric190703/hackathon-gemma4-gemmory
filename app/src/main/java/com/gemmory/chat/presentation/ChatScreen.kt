@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -26,6 +27,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -34,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.gemmory.chat.domain.MessageStatus
@@ -63,6 +66,7 @@ fun ChatScreen(
     onOpenSessions: () -> Unit,
     onOpenInbox: () -> Unit,
     onOpenVault: () -> Unit,
+    onOpenAsk: () -> Unit,
     onOpenSettings: () -> Unit,
     onDownloadModel: () -> Unit,
     onImportModel: () -> Unit,
@@ -79,6 +83,7 @@ fun ChatScreen(
 
     Scaffold(
         modifier = modifier,
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = {
@@ -108,6 +113,9 @@ fun ChatScreen(
                     IconButton(onClick = onOpenVault) {
                         Icon(Icons.Filled.Folder, contentDescription = "Vault")
                     }
+                    IconButton(onClick = onOpenAsk) {
+                        Icon(Icons.Filled.Search, contentDescription = "Ask Vault")
+                    }
                     IconButton(
                         onClick = onNewConversation,
                         enabled = !blocksWorkflow,
@@ -119,6 +127,13 @@ fun ChatScreen(
                         Icon(Icons.Filled.Settings, contentDescription = "Settings")
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+                    navigationIconContentColor = MaterialTheme.colorScheme.primary,
+                    actionIconContentColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                ),
             )
         },
         bottomBar = {
@@ -179,20 +194,28 @@ fun ChatScreen(
 
 @Composable
 private fun ModelLoadingPanel(modifier: Modifier = Modifier) {
-    Surface(modifier = modifier.fillMaxWidth()) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onBackground,
+    ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(Modifier.weight(1f))
-            Text("Loading Gemma 4 E2B", style = MaterialTheme.typography.headlineSmall)
+            Text(
+                text = "Loading Gemma 4 E2B",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
             Spacer(Modifier.height(16.dp))
             LinearProgressIndicator(Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
             Text(
                 text = "The vault unlocks when the local model is ready.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onBackground,
             )
             Spacer(Modifier.weight(1f))
         }

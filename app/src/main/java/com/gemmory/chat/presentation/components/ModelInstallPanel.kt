@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -23,6 +24,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gemmory.modelinstall.ModelInstallState
+import com.gemmory.ui.theme.GemmaMark
 import java.util.Locale
 
 const val TAG_INSTALL_PANEL = "install_panel"
@@ -50,6 +52,8 @@ fun ModelInstallPanel(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
+        GemmaMark(Modifier.size(84.dp))
+        Spacer(Modifier.height(20.dp))
         when (state) {
             is ModelInstallState.NotInstalled -> {
                 Text(state.descriptor.displayName, style = MaterialTheme.typography.headlineSmall)
@@ -107,7 +111,11 @@ fun ModelInstallPanel(
                 if (isLoadingEngine) {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(8.dp))
-                    Text("Loading the model into memory…", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        text = "Loading the model into memory…",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 } else {
                     Button(onClick = onLoad) { Text("Load model") }
                 }
@@ -149,7 +157,11 @@ private fun InstallProgress(
         LinearProgressIndicator(modifier = Modifier.fillMaxWidth().testTag(TAG_DOWNLOAD_PROGRESS))
     }
     Spacer(Modifier.height(8.dp))
-    Text(detail, style = MaterialTheme.typography.bodyMedium)
+    Text(
+        text = detail,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
     if (onCancel != null) {
         Spacer(Modifier.height(16.dp))
         TextButton(onClick = onCancel) { Text("Cancel") }
