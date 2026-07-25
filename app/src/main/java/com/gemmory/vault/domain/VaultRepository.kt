@@ -3,20 +3,39 @@ package com.gemmory.vault.domain
 import com.gemmory.inbox.domain.InboxEntry
 import kotlinx.coroutines.flow.Flow
 
-data class VaultAnswerContext(
+data class VaultNoteSummary(
     val noteId: String,
     val title: String,
     val path: String,
-    val snippet: String,
-    val markdown: String,
+    val tags: List<String>,
+    val aliases: List<String>,
+    val outgoingLinkCount: Int,
+    val backlinkCount: Int,
 )
+
+data class VaultReadableNote(
+    val note: VaultNote,
+    val outgoingLinks: List<VaultLink>,
+    val backlinks: List<VaultLink>,
+)
+
+data class VaultGeneratedAnswer(
+    val content: String,
+    val citationNoteIds: List<String>,
+)
+
+interface VaultAnswerTools {
+    suspend fun listNotes(limit: Int): List<VaultNoteSummary>
+    suspend fun searchNotes(query: String, limit: Int): List<VaultSearchResult>
+    suspend fun readNote(noteId: String): VaultReadableNote?
+}
 
 interface VaultAnswerGenerator {
     /**
      * Returns null when the local model is unavailable or declines to answer, so
-     * callers can preserve the deterministic search-only fallback.
+     * callers can show a local-model failure message.
      */
-    suspend fun answer(question: String, contexts: List<VaultAnswerContext>): String?
+    suspend fun answer(question: String, tools: VaultAnswerTools): VaultGeneratedAnswer?
 }
 
 interface VaultRepository {
