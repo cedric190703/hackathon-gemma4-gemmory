@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -95,6 +96,42 @@ class ChatScreenTest {
 
         composeRule.onNodeWithTag(TAG_INSTALL_PANEL).assertIsDisplayed()
         composeRule.onNodeWithTag(TAG_DOWNLOAD_BUTTON).assertIsDisplayed()
+    }
+
+    @Test
+    fun modelLoadingDoesNotShowThePreviousConversationBanner() {
+        composeRule.setContent {
+            GemmoryTheme {
+                ChatScreen(
+                    state = ChatUiState(
+                        topLevelState = TopLevelState.MODEL_LOADING,
+                        title = "Earlier conversation",
+                    ),
+                    inputValue = "",
+                    streamingText = "",
+                    onInputChange = {},
+                    onSend = {},
+                    onStop = {},
+                    onNewConversation = {},
+                    onOpenSessions = {},
+                    onOpenInbox = {},
+                    onOpenVault = {},
+                    onOpenSettings = {},
+                    onDownloadModel = {},
+                    onImportModel = {},
+                    onCancelInstall = {},
+                    onRemoveModel = {},
+                    onLoadModel = {},
+                    onEditMessage = { _, _, _ -> },
+                    onDeleteMessage = { _, _ -> },
+                    onRecoveryAction = {},
+                    onDismissBanner = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Loading Gemma 4 E2B").assertIsDisplayed()
+        composeRule.onNodeWithText("Earlier conversation").assertDoesNotExist()
     }
 
     @Test

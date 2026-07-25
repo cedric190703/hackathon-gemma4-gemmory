@@ -93,28 +93,31 @@ fun ChatScreen(
         containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onBackground,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = state.title.ifBlank { "New conversation" },
-                            maxLines = 1,
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        Text(
-                            text = state.workflowLabel(),
-                            maxLines = 1,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                ),
-            )
+            // Loading is a dedicated screen; don't briefly expose the previous chat title.
+            if (!blocksWorkflow) {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(
+                                text = state.title.ifBlank { "New conversation" },
+                                maxLines = 1,
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                            Text(
+                                text = state.workflowLabel(),
+                                maxLines = 1,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                        scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
+                )
+            }
         },
         bottomBar = {
             ChatBottomBar(
