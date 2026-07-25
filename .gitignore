@@ -1,0 +1,22 @@
+*.iml
+.gradle/
+.kotlin/
+/local.properties
+/.idea/
+.DS_Store
+build/
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+*.keystore
+!debug.keystore
+
+# Room database schema exports
+app/schemas/
+
+# Never commit model weights
+*.litertlm
+*.task
+*.tflite
+/models/

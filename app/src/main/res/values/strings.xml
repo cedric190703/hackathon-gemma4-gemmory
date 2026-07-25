@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Gemmory</string>
+    <string name="model_install_channel_name">Model installation</string>
+    <string name="model_install_notification_title">Installing Gemma 4 E2B</string>
+</resources>
