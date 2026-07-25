@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.AlertDialog
@@ -44,6 +45,7 @@ fun VaultScreen(
     onDeleteNote: (String) -> Unit,
     onOpenGraph: () -> Unit,
     onUndo: () -> Unit,
+    onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var notePendingRemoval by remember { mutableStateOf<VaultNote?>(null) }
@@ -52,6 +54,11 @@ fun VaultScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Vault") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
                 actions = {
                     IconButton(onClick = onOpenGraph) {
                         Icon(Icons.Filled.AccountTree, contentDescription = "Open graph window")
