@@ -18,6 +18,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -65,13 +66,26 @@ fun InboxScreen(
                         onCapture(text)
                         text = ""
                     },
-                    enabled = text.isNotBlank(),
+                    enabled = text.isNotBlank() && !state.busy,
                 ) { Text("Save") }
-                OutlinedButton(onClick = onProcessSelected, enabled = state.selectedInboxIds.isNotEmpty()) {
-                    Text("Process selected")
+                OutlinedButton(onClick = onProcessSelected, enabled = state.selectedInboxIds.isNotEmpty() && !state.busy) {
+                    Text(if (state.busy) "Processing..." else "Process selected")
                 }
-                OutlinedButton(onClick = onProcessAll) { Text("Process all") }
+                OutlinedButton(onClick = onProcessAll, enabled = state.inbox.isNotEmpty() && !state.busy) {
+                    Text(if (state.busy) "Processing..." else "Process all")
+                }
             }
+
+            if (state.busy) {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Processing notes. Please wait until it is done.", style = MaterialTheme.typography.bodyMedium)
+                        LinearProgressIndicator(Modifier.fillMaxWidth())
+                    }
+                }
+            }
+
+            state.banner?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
 
             state.pendingChangeSet?.let { changeSet ->
                 Card(Modifier.fillMaxWidth()) {

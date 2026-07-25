@@ -29,6 +29,7 @@ import com.gemmory.vault.data.KnowledgeDatabase
 import com.gemmory.vault.data.RoomVaultRepository
 import com.gemmory.vault.domain.VaultRepository
 import com.gemmory.vault.storage.MarkdownVaultStorage
+import com.gemmory.vaultagent.LocalLlmVaultAnswerGenerator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
@@ -103,6 +104,7 @@ class AppContainer(private val application: Application) {
             dao = knowledgeDatabase.knowledgeDao(),
             storage = vaultStorage,
             dispatchers = dispatchers,
+            answerGenerator = LocalLlmVaultAnswerGenerator(engineController),
         )
     }
 

@@ -22,6 +22,7 @@ import com.gemmory.vault.domain.ApplyResult
 import com.gemmory.vault.domain.ProposedVaultChangeSet
 import com.gemmory.vault.domain.UndoResult
 import com.gemmory.vault.domain.VaultEntry
+import com.gemmory.vault.domain.VaultGraph
 import com.gemmory.vault.domain.VaultLink
 import com.gemmory.vault.domain.VaultNote
 import com.gemmory.vault.domain.VaultOperation
@@ -244,6 +245,10 @@ class FakeVaultRepository(
 
     override fun observeNotes(): Flow<List<VaultEntry>> = flowOf(emptyList())
 
+    override fun observeAllLinks(): Flow<List<VaultLink>> = flowOf(emptyList())
+
+    override fun observeGraph(): Flow<VaultGraph> = flowOf(VaultGraph())
+
     override fun observeBacklinks(noteId: String): Flow<List<VaultLink>> = flowOf(emptyList())
 
     override fun observeOutgoingLinks(noteId: String): Flow<List<VaultLink>> = flowOf(emptyList())
@@ -261,6 +266,8 @@ class FakeVaultRepository(
         )
 
     override suspend fun updateInboxText(id: String, text: String) = Unit
+
+    override suspend fun deleteInboxEntries(ids: List<String>) = Unit
 
     override suspend fun proposeProcessing(entryIds: List<String>): ProposedVaultChangeSet =
         emptyChangeSet("process")
@@ -281,6 +288,8 @@ class FakeVaultRepository(
     override suspend fun undoLatest(): UndoResult? = null
 
     override suspend fun getNote(noteId: String): VaultNote? = null
+
+    override suspend fun deleteNote(noteId: String): Boolean = true
 
     override suspend fun search(query: String, limit: Int): List<VaultSearchResult> = emptyList()
 

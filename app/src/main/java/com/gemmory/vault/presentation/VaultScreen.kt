@@ -14,8 +14,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -24,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -46,6 +50,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.gemmory.vault.domain.VaultGraph
 import com.gemmory.vault.domain.VaultGraphNode
+import com.gemmory.vault.domain.VaultNote
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -60,15 +65,21 @@ fun VaultScreen(
     state: KnowledgeUiState,
     onSearch: (String) -> Unit,
     onOpenNote: (String) -> Unit,
+    onDeleteNote: (String) -> Unit,
+    onOpenGraph: () -> Unit,
     onUndo: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var notePendingRemoval by remember { mutableStateOf<VaultNote?>(null) }
     Scaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
                 title = { Text("Vault") },
                 actions = {
+                    IconButton(onClick = onOpenGraph) {
+                        Icon(Icons.Filled.AccountTree, contentDescription = "Open graph window")
+                    }
                     IconButton(onClick = onUndo) {
                         Icon(Icons.Filled.History, contentDescription = "Undo latest change")
                     }
@@ -108,11 +119,20 @@ fun VaultScreen(
                     onOpenNote = onOpenNote,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                state.banner?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
                 val note = state.selectedNote
                 if (note == null) {
                     Text("Select a note", style = MaterialTheme.typography.titleMedium)
                 } else {
-                    Text(note.title, style = MaterialTheme.typography.titleLarge)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(note.title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+                        IconButton(
+                            onClick = { notePendingRemoval = note },
+                            enabled = !state.busy,
+                        ) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Remove note from vault")
+                        }
+                    }
                     Text("${note.path}  rev ${note.revision}", style = MaterialTheme.typography.labelMedium)
                     LazyColumn {
                         item {
@@ -127,6 +147,29 @@ fun VaultScreen(
                 }
             }
         }
+    }
+
+    notePendingRemoval?.let { note ->
+        AlertDialog(
+            onDismissRequest = { notePendingRemoval = null },
+            title = { Text("Remove note from vault?") },
+            text = { Text("This permanently removes ${note.title} from the vault.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        notePendingRemoval = null
+                        onDeleteNote(note.id)
+                    },
+                ) {
+                    Text("Remove")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { notePendingRemoval = null }) {
+                    Text("Cancel")
+                }
+            },
+        )
     }
 }
 
