@@ -157,8 +157,11 @@ class KnowledgeViewModel(
         viewModelScope.launch {
             askMessages.value += AskMessage(UUID.randomUUID().toString(), "USER", question)
             busy.value = true
-            val answer = repository.answerVaultQuestion(conversationId, question)
-            askMessages.value += AskMessage(UUID.randomUUID().toString(), "ASSISTANT", answer)
+            runCatching { repository.answerVaultQuestion(conversationId, question) }
+                .onSuccess { answer ->
+                    askMessages.value += AskMessage(UUID.randomUUID().toString(), "ASSISTANT", answer)
+                }
+                .onFailure { banner.value = it.message ?: "Unable to answer from the vault" }
             busy.value = false
         }
     }

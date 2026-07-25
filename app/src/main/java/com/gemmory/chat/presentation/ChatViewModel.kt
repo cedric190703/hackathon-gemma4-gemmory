@@ -19,6 +19,7 @@ import com.gemmory.modelinstall.ModelInstallState
 import com.gemmory.modelinstall.ModelInstaller
 import com.gemmory.settings.AppSettings
 import com.gemmory.settings.SettingsRepository
+import com.gemmory.vault.domain.VaultRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -42,6 +43,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalCoroutinesApi::class)
 class ChatViewModel(
     private val repository: ChatRepository,
+    private val vaultRepository: VaultRepository,
     private val installer: ModelInstaller,
     private val engineController: EngineController,
     private val settingsRepository: SettingsRepository,
@@ -164,6 +166,64 @@ class ChatViewModel(
             } catch (ce: CancellationException) {
                 persistPartial(assistant.id, MessageStatus.CANCELLED, "Stopped")
                 throw ce
+            } finally {
+                streamingMessageId.value = null
+                _streamingText.value = ""
+                generating.value = false
+            }
+        }
+    }
+
+    fun sendVaultQuestion() {
+        val text = _input.value.trim()
+        if (text.isEmpty()) return
+        if (!uiState.value.canSendPrompt) {
+            banner.value = ErrorBanner("Wait until the vault agent is ready before sending a question.")
+            return
+        }
+        if (generating.value) {
+            banner.value = ErrorPresentation.forInference(InferenceError.AlreadyGenerating)
+            return
+        }
+
+        _input.value = ""
+        banner.value = null
+        generating.value = true
+
+        generationJob = viewModelScope.launch {
+            val id = conversationId.value ?: repository.createSession().also {
+                conversationId.value = it.id
+            }.id
+
+            repository.appendMessage(id, MessageRole.USER, text, MessageStatus.COMPLETE)
+            val assistant = repository.appendMessage(
+                conversationId = id,
+                role = MessageRole.ASSISTANT,
+                content = "",
+                status = MessageStatus.GENERATING,
+            )
+            streamingMessageId.value = assistant.id
+            _streamingText.value = ""
+
+            try {
+                val answer = vaultRepository.answerVaultQuestion(id, text)
+                _streamingText.value = answer
+                repository.updateMessage(
+                    messageId = assistant.id,
+                    content = answer,
+                    status = MessageStatus.COMPLETE,
+                )
+            } catch (ce: CancellationException) {
+                persistPartial(assistant.id, MessageStatus.CANCELLED, "Stopped")
+                throw ce
+            } catch (throwable: Throwable) {
+                banner.value = ErrorBanner(throwable.message ?: "Unable to answer from the vault.")
+                repository.updateMessage(
+                    messageId = assistant.id,
+                    content = "",
+                    status = MessageStatus.FAILED,
+                    errorText = "Vault answer failed",
+                )
             } finally {
                 streamingMessageId.value = null
                 _streamingText.value = ""
@@ -474,6 +534,7 @@ class ChatViewModel(
 
         fun factory(
             repository: ChatRepository,
+            vaultRepository: VaultRepository,
             installer: ModelInstaller,
             engineController: EngineController,
             settingsRepository: SettingsRepository,
@@ -483,6 +544,7 @@ class ChatViewModel(
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
                 ChatViewModel(
                     repository,
+                    vaultRepository,
                     installer,
                     engineController,
                     settingsRepository,

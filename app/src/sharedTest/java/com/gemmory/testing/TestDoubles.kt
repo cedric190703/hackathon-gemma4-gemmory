@@ -9,6 +9,8 @@ import com.gemmory.chat.domain.MessageStatus
 import com.gemmory.core.dispatchers.AppDispatchers
 import com.gemmory.core.filesystem.FileSystem
 import com.gemmory.core.filesystem.RealFileSystem
+import com.gemmory.inbox.domain.InboxEntry
+import com.gemmory.inbox.domain.InboxEntryStatus
 import com.gemmory.inference.BackendPreference
 import com.gemmory.modelinstall.ModelCatalog
 import com.gemmory.modelinstall.ModelInstallState
@@ -16,10 +18,22 @@ import com.gemmory.modelinstall.ModelInstaller
 import com.gemmory.modelinstall.NetworkStatusProvider
 import com.gemmory.settings.AppSettings
 import com.gemmory.settings.SettingsRepository
+import com.gemmory.vault.domain.ApplyResult
+import com.gemmory.vault.domain.ProposedVaultChangeSet
+import com.gemmory.vault.domain.UndoResult
+import com.gemmory.vault.domain.VaultEntry
+import com.gemmory.vault.domain.VaultLink
+import com.gemmory.vault.domain.VaultNote
+import com.gemmory.vault.domain.VaultOperation
+import com.gemmory.vault.domain.VaultOperationPreview
+import com.gemmory.vault.domain.VaultRepository
+import com.gemmory.vault.domain.VaultSearchResult
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import java.io.File
 
@@ -217,6 +231,74 @@ class FakeSettingsRepository(initial: AppSettings = AppSettings()) : SettingsRep
     override suspend fun setAllowMeteredDownload(allow: Boolean) {
         _settings.value = _settings.value.copy(allowMeteredDownload = allow)
     }
+}
+
+class FakeVaultRepository(
+    private val answerDelayMs: Long = 0L,
+    private val answerProvider: (String, String) -> String = { _, question -> "Vault answer: $question" },
+) : VaultRepository {
+
+    val askedQuestions = mutableListOf<Pair<String, String>>()
+
+    override fun observeInbox(): Flow<List<InboxEntry>> = flowOf(emptyList())
+
+    override fun observeNotes(): Flow<List<VaultEntry>> = flowOf(emptyList())
+
+    override fun observeBacklinks(noteId: String): Flow<List<VaultLink>> = flowOf(emptyList())
+
+    override fun observeOutgoingLinks(noteId: String): Flow<List<VaultLink>> = flowOf(emptyList())
+
+    override suspend fun captureInbox(text: String): InboxEntry =
+        InboxEntry(
+            id = "inbox-0",
+            text = text,
+            status = InboxEntryStatus.DRAFT,
+            createdAt = 1L,
+            updatedAt = 1L,
+            processedAt = null,
+            lastError = null,
+            resultNoteIds = emptyList(),
+        )
+
+    override suspend fun updateInboxText(id: String, text: String) = Unit
+
+    override suspend fun proposeProcessing(entryIds: List<String>): ProposedVaultChangeSet =
+        emptyChangeSet("process")
+
+    override suspend fun proposeAllUnprocessed(): ProposedVaultChangeSet =
+        emptyChangeSet("process all")
+
+    override suspend fun preview(
+        operations: List<VaultOperation>,
+        request: String,
+        sourceInboxIds: List<String>,
+    ): ProposedVaultChangeSet =
+        ProposedVaultChangeSet("change-0", request, sourceInboxIds, operations, emptyList(), emptyList())
+
+    override suspend fun apply(changeSet: ProposedVaultChangeSet): ApplyResult =
+        ApplyResult(changeSet.id, emptyList())
+
+    override suspend fun undoLatest(): UndoResult? = null
+
+    override suspend fun getNote(noteId: String): VaultNote? = null
+
+    override suspend fun search(query: String, limit: Int): List<VaultSearchResult> = emptyList()
+
+    override suspend fun answerVaultQuestion(conversationId: String, question: String): String {
+        if (answerDelayMs > 0L) delay(answerDelayMs)
+        askedQuestions += conversationId to question
+        return answerProvider(conversationId, question)
+    }
+
+    private fun emptyChangeSet(request: String): ProposedVaultChangeSet =
+        ProposedVaultChangeSet(
+            id = "change-0",
+            userRequest = request,
+            sourceInboxIds = emptyList(),
+            operations = emptyList(),
+            validationErrors = emptyList(),
+            previews = emptyList<VaultOperationPreview>(),
+        )
 }
 
 class FakeNetworkStatusProvider(
