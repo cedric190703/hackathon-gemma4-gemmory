@@ -11,20 +11,27 @@ import androidx.navigation.compose.rememberNavController
 import com.gemmory.chat.presentation.ChatScreen
 import com.gemmory.chat.presentation.ChatViewModel
 import com.gemmory.chat.presentation.ConversationsScreen
+import com.gemmory.inbox.presentation.InboxScreen
 import com.gemmory.modelinstall.ModelInstallService
 import com.gemmory.modelinstall.isBusy
 import com.gemmory.settings.SettingsScreen
+import com.gemmory.vault.presentation.KnowledgeViewModel
+import com.gemmory.vault.presentation.VaultScreen
+import com.gemmory.vaultagent.presentation.AskVaultScreen
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 
 private object Routes {
     const val CHAT = "chat"
     const val CONVERSATIONS = "conversations"
+    const val INBOX = "inbox"
+    const val VAULT = "vault"
+    const val ASK = "ask"
     const val SETTINGS = "settings"
 }
 
 @Composable
-fun GemmoryNavHost(viewModel: ChatViewModel) {
+fun GemmoryNavHost(viewModel: ChatViewModel, knowledgeViewModel: KnowledgeViewModel) {
     val navController = rememberNavController()
     val context = LocalContext.current
 
@@ -32,6 +39,7 @@ fun GemmoryNavHost(viewModel: ChatViewModel) {
     val input by viewModel.input.collectAsStateWithLifecycle()
     val streamingText by viewModel.streamingText.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val knowledgeState by knowledgeViewModel.uiState.collectAsStateWithLifecycle()
 
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
@@ -54,6 +62,9 @@ fun GemmoryNavHost(viewModel: ChatViewModel) {
                 onStop = viewModel::stop,
                 onNewConversation = viewModel::newConversation,
                 onOpenSessions = { navController.navigate(Routes.CONVERSATIONS) },
+                onOpenInbox = { navController.navigate(Routes.INBOX) },
+                onOpenVault = { navController.navigate(Routes.VAULT) },
+                onOpenAsk = { navController.navigate(Routes.ASK) },
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onDownloadModel = { viewModel.downloadModel() },
                 onImportModel = { importLauncher.launch(arrayOf("*/*")) },
@@ -81,6 +92,34 @@ fun GemmoryNavHost(viewModel: ChatViewModel) {
                 },
                 onDelete = viewModel::deleteConversation,
                 onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(Routes.INBOX) {
+            InboxScreen(
+                state = knowledgeState,
+                onCapture = knowledgeViewModel::capture,
+                onToggle = knowledgeViewModel::toggleInboxSelection,
+                onProcessSelected = knowledgeViewModel::processSelected,
+                onProcessAll = knowledgeViewModel::processAll,
+                onApply = knowledgeViewModel::applyPending,
+                onReject = knowledgeViewModel::rejectPending,
+            )
+        }
+
+        composable(Routes.VAULT) {
+            VaultScreen(
+                state = knowledgeState,
+                onSearch = knowledgeViewModel::setSearchQuery,
+                onOpenNote = knowledgeViewModel::openNote,
+                onUndo = knowledgeViewModel::undoLatest,
+            )
+        }
+
+        composable(Routes.ASK) {
+            AskVaultScreen(
+                state = knowledgeState,
+                onAsk = knowledgeViewModel::ask,
             )
         }
 

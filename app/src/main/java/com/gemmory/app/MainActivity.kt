@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.ViewModelProvider
 import com.gemmory.chat.presentation.ChatViewModel
 import com.gemmory.ui.theme.GemmoryTheme
+import com.gemmory.vault.presentation.KnowledgeViewModel
 
 class MainActivity : ComponentActivity() {
 
@@ -25,10 +26,14 @@ class MainActivity : ComponentActivity() {
                 contextPolicy = container.contextPolicy,
             ),
         )[ChatViewModel::class.java]
+        val knowledgeViewModel = ViewModelProvider(
+            this,
+            KnowledgeViewModel.factory(container.vaultRepository),
+        )[KnowledgeViewModel::class.java]
 
         setContent {
             GemmoryTheme {
-                GemmoryNavHost(viewModel = viewModel)
+                GemmoryNavHost(viewModel = viewModel, knowledgeViewModel = knowledgeViewModel)
             }
         }
     }
