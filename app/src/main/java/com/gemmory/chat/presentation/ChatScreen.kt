@@ -85,6 +85,7 @@ fun ChatScreen(
     Scaffold(
         modifier = modifier,
         containerColor = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onBackground,
         topBar = {
             TopAppBar(
                 title = {
@@ -190,6 +191,7 @@ private fun ChatBottomBar(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
         tonalElevation = 0.dp,
     ) {
         Column(Modifier.fillMaxWidth()) {
@@ -211,24 +213,71 @@ private fun ChatBottomBar(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onOpenSessions, enabled = !blocksWorkflow) {
-                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Notes")
+                IconButton(
+                    onClick = onOpenSessions,
+                    enabled = !blocksWorkflow,
+                    modifier = Modifier.size(52.dp),
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.List,
+                        contentDescription = "Notes",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
                 }
-                IconButton(onClick = onOpenInbox) {
-                    Icon(Icons.Filled.Email, contentDescription = "Inbox")
+                IconButton(
+                    onClick = onOpenInbox,
+                    enabled = !blocksWorkflow,
+                    modifier = Modifier.size(52.dp),
+                ) {
+                    Icon(
+                        Icons.Filled.Email,
+                        contentDescription = "Inbox",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
                 }
-                IconButton(onClick = onOpenVault) {
-                    Icon(Icons.Filled.Folder, contentDescription = "Vault")
+                IconButton(
+                    onClick = onOpenVault,
+                    enabled = !blocksWorkflow,
+                    modifier = Modifier.size(52.dp),
+                ) {
+                    Icon(
+                        Icons.Filled.Folder,
+                        contentDescription = "Vault",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+                IconButton(
+                    onClick = onOpenAsk,
+                    enabled = !blocksWorkflow,
+                    modifier = Modifier.size(52.dp),
+                ) {
+                    Icon(
+                        Icons.Filled.Search,
+                        contentDescription = "Ask Vault",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
                 }
                 IconButton(
                     onClick = onNewConversation,
                     enabled = !blocksWorkflow,
-                    modifier = Modifier.testTag(TAG_NEW_CONVERSATION),
+                    modifier = Modifier.size(52.dp).testTag(TAG_NEW_CONVERSATION),
                 ) {
-                    Icon(Icons.Filled.Add, contentDescription = "New note")
+                    Icon(
+                        Icons.Filled.Add,
+                        contentDescription = "New note",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
                 }
-                IconButton(onClick = onOpenSettings, enabled = !blocksWorkflow) {
-                    Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                IconButton(
+                    onClick = onOpenSettings,
+                    enabled = !blocksWorkflow,
+                    modifier = Modifier.size(52.dp),
+                ) {
+                    Icon(
+                        Icons.Filled.Settings,
+                        contentDescription = "Settings",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
                 }
             }
         }
