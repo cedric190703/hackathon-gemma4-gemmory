@@ -37,6 +37,27 @@ enum class LinkResolutionStatus {
     AMBIGUOUS,
 }
 
+data class VaultGraph(
+    val nodes: List<VaultGraphNode> = emptyList(),
+    val edges: List<VaultGraphEdge> = emptyList(),
+    val unresolvedLinkCount: Int = 0,
+)
+
+data class VaultGraphNode(
+    val noteId: String,
+    val title: String,
+    val path: String,
+    val cluster: String,
+    val degree: Int,
+)
+
+data class VaultGraphEdge(
+    val id: String,
+    val sourceNoteId: String,
+    val targetNoteId: String,
+    val label: String?,
+)
+
 data class VaultSearchResult(
     val noteId: String,
     val title: String,
