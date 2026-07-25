@@ -12,11 +12,9 @@ import com.gemmory.vault.domain.VaultSearchResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 data class KnowledgeUiState(
     val inbox: List<InboxEntry> = emptyList(),
@@ -26,15 +24,8 @@ data class KnowledgeUiState(
     val searchResults: List<VaultSearchResult> = emptyList(),
     val selectedInboxIds: Set<String> = emptySet(),
     val pendingChangeSet: ProposedVaultChangeSet? = null,
-    val askMessages: List<AskMessage> = emptyList(),
     val busy: Boolean = false,
     val banner: String? = null,
-)
-
-data class AskMessage(
-    val id: String,
-    val role: String,
-    val text: String,
 )
 
 class KnowledgeViewModel(
@@ -46,10 +37,8 @@ class KnowledgeViewModel(
     private val searchResults = MutableStateFlow<List<VaultSearchResult>>(emptyList())
     private val selectedInboxIds = MutableStateFlow<Set<String>>(emptySet())
     private val pendingChangeSet = MutableStateFlow<ProposedVaultChangeSet?>(null)
-    private val askMessages = MutableStateFlow<List<AskMessage>>(emptyList())
     private val busy = MutableStateFlow(false)
     private val banner = MutableStateFlow<String?>(null)
-    private val conversationId = UUID.randomUUID().toString()
 
     private val inbox = repository.observeInbox()
     private val notes = repository.observeNotes()
@@ -57,7 +46,7 @@ class KnowledgeViewModel(
     val uiState: StateFlow<KnowledgeUiState> = combine(
         combine(inbox, notes, selectedNote, ::Triple),
         combine(searchQuery, searchResults, selectedInboxIds, ::Triple),
-        combine(pendingChangeSet, askMessages, busy, ::Triple),
+        combine(pendingChangeSet, busy, ::Pair),
         banner,
     ) { first, second, third, message ->
         KnowledgeUiState(
@@ -68,8 +57,7 @@ class KnowledgeViewModel(
             searchResults = second.second,
             selectedInboxIds = second.third,
             pendingChangeSet = third.first,
-            askMessages = third.second,
-            busy = third.third,
+            busy = third.second,
             banner = message,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), KnowledgeUiState())
@@ -146,17 +134,6 @@ class KnowledgeViewModel(
         searchQuery.value = query
         viewModelScope.launch {
             searchResults.value = repository.search(query, limit = 20)
-        }
-    }
-
-    fun ask(question: String) {
-        if (question.isBlank()) return
-        viewModelScope.launch {
-            askMessages.value += AskMessage(UUID.randomUUID().toString(), "USER", question)
-            busy.value = true
-            val answer = repository.answerVaultQuestion(conversationId, question)
-            askMessages.value += AskMessage(UUID.randomUUID().toString(), "ASSISTANT", answer)
-            busy.value = false
         }
     }
 

@@ -67,6 +67,8 @@ class ChatScreenTest {
                 onStop = viewModel::stop,
                 onNewConversation = viewModel::newConversation,
                 onOpenSessions = {},
+                onOpenInbox = {},
+                onOpenVault = {},
                 onOpenSettings = {},
                 onDownloadModel = { viewModel.downloadModel() },
                 onImportModel = {},
