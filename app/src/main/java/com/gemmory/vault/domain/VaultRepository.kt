@@ -28,12 +28,14 @@ interface VaultRepository {
     fun observeOutgoingLinks(noteId: String): Flow<List<VaultLink>>
     suspend fun captureInbox(text: String): InboxEntry
     suspend fun updateInboxText(id: String, text: String)
+    suspend fun deleteInboxEntries(ids: List<String>)
     suspend fun proposeProcessing(entryIds: List<String>): ProposedVaultChangeSet
     suspend fun proposeAllUnprocessed(): ProposedVaultChangeSet
     suspend fun preview(operations: List<VaultOperation>, request: String, sourceInboxIds: List<String>): ProposedVaultChangeSet
     suspend fun apply(changeSet: ProposedVaultChangeSet): ApplyResult
     suspend fun undoLatest(): UndoResult?
     suspend fun getNote(noteId: String): VaultNote?
+    suspend fun deleteNote(noteId: String): Boolean
     suspend fun search(query: String, limit: Int): List<VaultSearchResult>
     suspend fun answerVaultQuestion(conversationId: String, question: String): String
 }

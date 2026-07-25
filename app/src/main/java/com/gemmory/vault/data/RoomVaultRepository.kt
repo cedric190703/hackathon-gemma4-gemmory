@@ -92,6 +92,10 @@ class RoomVaultRepository(
         dao.updateInbox(entry.copy(text = text.trim(), updatedAt = System.currentTimeMillis()))
     }
 
+    override suspend fun deleteInboxEntries(ids: List<String>) = withContext(dispatchers.io) {
+        if (ids.isNotEmpty()) dao.deleteInboxEntries(ids)
+    }
+
     override suspend fun proposeAllUnprocessed(): ProposedVaultChangeSet = withContext(dispatchers.io) {
         val entries = dao.inboxByStatuses(listOf(InboxEntryStatus.READY.name, InboxEntryStatus.FAILED.name))
         proposeProcessing(entries.map { it.id })
@@ -385,6 +389,18 @@ class RoomVaultRepository(
     override suspend fun getNote(noteId: String): VaultNote? = withContext(dispatchers.io) {
         val entity = dao.noteById(noteId) ?: return@withContext null
         entity.toDomain(storage.read(entity.path).orEmpty())
+    }
+
+    override suspend fun deleteNote(noteId: String): Boolean = withContext(dispatchers.io) {
+        val entity = dao.noteById(noteId) ?: return@withContext false
+        database.withTransaction {
+            dao.deleteFts(entity.id)
+            dao.deleteLinksTouching(entity.id)
+            dao.deleteNote(entity.id)
+            storage.delete(entity.path)
+        }
+        rebuildAllLinks()
+        true
     }
 
     override suspend fun search(query: String, limit: Int): List<VaultSearchResult> = withContext(dispatchers.io) {
