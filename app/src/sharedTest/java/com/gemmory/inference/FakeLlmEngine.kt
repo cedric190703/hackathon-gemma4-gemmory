@@ -37,9 +37,12 @@ class FakeLlmEngine(
         private set
     var lastReplayedHistory: List<ConversationTurn> = emptyList()
         private set
+    var lastResetOptions: GenerationOptions = GenerationOptions.Default
+        private set
     var resetCallCount: Int = 0
         private set
     val promptsReceived: MutableList<String> = mutableListOf()
+    val optionsReceived: MutableList<GenerationOptions> = mutableListOf()
 
     override suspend fun initialize(modelPath: String) {
         initializeCallCount++
@@ -76,6 +79,7 @@ class FakeLlmEngine(
                 return@flow
             }
             promptsReceived += prompt
+            optionsReceived += options
             emit(GenerationEvent.Started)
 
             failGenerationWith?.let { error ->
@@ -107,9 +111,11 @@ class FakeLlmEngine(
     override suspend fun resetConversation(
         conversationId: String,
         history: List<ConversationTurn>,
+        options: GenerationOptions,
     ) {
         resetCallCount++
         lastReplayedHistory = history
+        lastResetOptions = options
     }
 
     override suspend fun close() {

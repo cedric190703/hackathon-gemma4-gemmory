@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -123,7 +124,7 @@ fun ChatScreen(
                 placeholder = when (state.topLevelState) {
                     TopLevelState.MODEL_LOADING -> "Loading the model…"
                     TopLevelState.GENERATING -> "Generating…"
-                    else -> "Message Gemmory"
+                    else -> "Ask Gemmory about processed notes"
                 },
                 blocksWorkflow = blocksWorkflow,
                 onOpenSessions = onOpenSessions,
@@ -254,7 +255,7 @@ private fun ChatBottomBar(
                 ) {
                     Icon(
                         Icons.Filled.Add,
-                        contentDescription = "New note",
+                        contentDescription = "New question",
                         tint = MaterialTheme.colorScheme.onSurface,
                     )
                 }

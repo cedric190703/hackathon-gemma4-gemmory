@@ -67,8 +67,9 @@ class EngineController(
     suspend fun resetConversation(
         conversationId: String,
         history: List<ConversationTurn> = emptyList(),
+        options: GenerationOptions = GenerationOptions.Default,
     ) {
-        engine.resetConversation(conversationId, history)
+        engine.resetConversation(conversationId, history, options)
         preparedConversationId = when (engine.diagnostics.value.state) {
             is EngineState.Ready,
             EngineState.Generating,

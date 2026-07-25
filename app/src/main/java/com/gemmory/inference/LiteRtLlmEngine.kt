@@ -282,12 +282,13 @@ class LiteRtLlmEngine(
     override suspend fun resetConversation(
         conversationId: String,
         history: List<ConversationTurn>,
+        options: GenerationOptions,
     ) = lifecycleLock.withLock {
         withContext(dispatchers.inference) {
             conversation?.closeQuietly()
             conversation = null
             activeConversationId = null
-            ensureConversation(conversationId, GenerationOptions.Default, history)
+            ensureConversation(conversationId, options, history)
             Unit
         }
     }

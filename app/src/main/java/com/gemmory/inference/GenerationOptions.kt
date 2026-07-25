@@ -12,5 +12,11 @@ data class GenerationOptions(
 ) {
     companion object {
         val Default = GenerationOptions()
+        val GroundedVaultAnswer = GenerationOptions(
+            temperature = 0.1,
+            topK = 10,
+            topP = 0.7,
+            seed = InferenceConfig.DEFAULT_SAMPLING.seed,
+        )
     }
 }
