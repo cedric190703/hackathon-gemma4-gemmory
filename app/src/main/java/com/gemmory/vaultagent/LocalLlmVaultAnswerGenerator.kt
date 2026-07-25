@@ -2,7 +2,6 @@ package com.gemmory.vaultagent
 
 import com.gemmory.core.logging.AppLog
 import com.gemmory.inference.EngineController
-import com.gemmory.inference.EngineState
 import com.gemmory.inference.GenerationEvent
 import com.gemmory.inference.GenerationOptions
 import com.gemmory.vault.domain.VaultAnswerGenerator
@@ -20,7 +19,7 @@ class LocalLlmVaultAnswerGenerator(
 ) : VaultAnswerGenerator {
 
     override suspend fun answer(question: String, vaultFiles: List<VaultFile>): VaultGeneratedAnswer? {
-        if (engineController.engine.diagnostics.value.state !is EngineState.Ready) return null
+        if (!engineController.awaitReady()) return null
 
         val conversationId = "ask-vault-${UUID.randomUUID()}"
         engineController.resetConversation(

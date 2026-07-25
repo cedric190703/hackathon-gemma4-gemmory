@@ -3,6 +3,7 @@ package com.gemmory.vaultagent
 import com.gemmory.inference.EngineController
 import com.gemmory.inference.FakeLlmEngine
 import com.gemmory.inference.GenerationOptions
+import com.gemmory.inference.InferenceError
 import com.gemmory.vault.domain.VaultProcessingExistingNote
 import com.gemmory.vault.domain.VaultProcessingInboxEntry
 import kotlinx.coroutines.test.runTest
@@ -66,6 +67,31 @@ class LocalLlmVaultNoteProcessorTest {
     }
 
     @Test
+    fun `waits for an in flight model load before processing inbox notes`() = runTest {
+        val engine = FakeLlmEngine(
+            tokens = listOf(
+                """
+                {"notes":[{"title":"Loaded Note","sourceInboxIds":["inbox-1"],"bodyMarkdown":"## Summary\nReady after load."}]}
+                """.trimIndent(),
+            ),
+            initializationDelayMs = 1_000,
+        )
+        val controller = EngineController(engine, this)
+        val processor = LocalLlmVaultNoteProcessor(controller)
+
+        controller.ensureLoaded("/tmp/model.litertlm")
+
+        val drafts = processor.processInbox(
+            entries = listOf(VaultProcessingInboxEntry("inbox-1", "rough thought")),
+            existingNotes = emptyList(),
+        )
+
+        assertEquals(1, engine.initializeCallCount)
+        assertEquals(1, drafts?.size)
+        assertEquals("Loaded Note", drafts!!.single().title)
+    }
+
+    @Test
     fun `returns null without generation when the model is not ready`() = runTest {
         val engine = FakeLlmEngine()
         val processor = LocalLlmVaultNoteProcessor(EngineController(engine, this))
@@ -77,6 +103,37 @@ class LocalLlmVaultNoteProcessorTest {
 
         assertNull(result)
         assertEquals(emptyList<String>(), engine.promptsReceived)
+    }
+
+    @Test
+    fun `returns an empty proposal when model output is not valid JSON`() = runTest {
+        val engine = FakeLlmEngine(listOf("I processed the note but did not return JSON."))
+        val controller = EngineController(engine, this)
+        val processor = LocalLlmVaultNoteProcessor(controller)
+        engine.initialize("/tmp/model.litertlm")
+
+        val result = processor.processInbox(
+            entries = listOf(VaultProcessingInboxEntry("inbox-1", "rough thought")),
+            existingNotes = emptyList(),
+        )
+
+        assertTrue(result!!.isEmpty())
+        assertEquals(1, engine.promptsReceived.size)
+    }
+
+    @Test
+    fun `returns an empty proposal when generation fails after the model is ready`() = runTest {
+        val engine = FakeLlmEngine(failGenerationWith = InferenceError.GenerationFailed("native error"))
+        val controller = EngineController(engine, this)
+        val processor = LocalLlmVaultNoteProcessor(controller)
+        engine.initialize("/tmp/model.litertlm")
+
+        val result = processor.processInbox(
+            entries = listOf(VaultProcessingInboxEntry("inbox-1", "rough thought")),
+            existingNotes = emptyList(),
+        )
+
+        assertTrue(result!!.isEmpty())
     }
 
     @Test

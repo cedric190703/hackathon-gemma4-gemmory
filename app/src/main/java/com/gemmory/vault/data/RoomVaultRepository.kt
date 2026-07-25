@@ -2,6 +2,7 @@ package com.gemmory.vault.data
 
 import androidx.room.withTransaction
 import com.gemmory.core.dispatchers.AppDispatchers
+import com.gemmory.core.logging.AppLog
 import com.gemmory.inbox.data.InboxEntryEntity
 import com.gemmory.inbox.domain.InboxEntry
 import com.gemmory.inbox.domain.InboxEntryStatus
@@ -140,7 +141,9 @@ class RoomVaultRepository(
                     userRequest = request,
                     sourceInboxIds = sourceInboxIds,
                     operations = emptyList(),
-                    validationErrors = listOf("The model did not return any notes to process."),
+                    validationErrors = listOf(
+                        "The local model could not turn those inbox notes into a valid proposal. Try a smaller batch or edit the notes and retry.",
+                    ),
                     previews = emptyList(),
                 )
             }
@@ -549,23 +552,27 @@ class RoomVaultRepository(
         null
     }
 
-    private suspend fun processInboxWithModel(entries: List<InboxEntryEntity>): List<ProcessedVaultNoteDraft>? = try {
-        noteProcessor?.processInbox(
-            entries = entries.map { VaultProcessingInboxEntry(it.id, it.text) },
-            existingNotes = dao.allActiveNotes().map { note ->
-                VaultProcessingExistingNote(
-                    noteId = note.id,
-                    title = note.title,
-                    path = note.path,
-                    tags = split(note.tags),
-                    aliases = split(note.aliases),
-                )
-            },
-        )
-    } catch (ce: CancellationException) {
-        throw ce
-    } catch (_: Throwable) {
-        null
+    private suspend fun processInboxWithModel(entries: List<InboxEntryEntity>): List<ProcessedVaultNoteDraft>? {
+        val processor = noteProcessor ?: return null
+        return try {
+            processor.processInbox(
+                entries = entries.map { VaultProcessingInboxEntry(it.id, it.text) },
+                existingNotes = dao.allActiveNotes().map { note ->
+                    VaultProcessingExistingNote(
+                        noteId = note.id,
+                        title = note.title,
+                        path = note.path,
+                        tags = split(note.tags),
+                        aliases = split(note.aliases),
+                    )
+                },
+            )
+        } catch (ce: CancellationException) {
+            throw ce
+        } catch (throwable: Throwable) {
+            AppLog.w(TAG, "vault note processing crashed: ${throwable::class.simpleName}")
+            emptyList()
+        }
     }
 
     private suspend fun validate(operations: List<VaultOperation>): List<String> {
@@ -886,6 +893,7 @@ class RoomVaultRepository(
     }
 
     private companion object {
+        const val TAG = "RoomVaultRepository"
         val editableInboxStatuses = setOf(InboxEntryStatus.DRAFT.name, InboxEntryStatus.READY.name, InboxEntryStatus.FAILED.name)
         val tokenRegex = Regex("""[\p{L}\p{N}_]+""")
         val stopWords = setOf(
