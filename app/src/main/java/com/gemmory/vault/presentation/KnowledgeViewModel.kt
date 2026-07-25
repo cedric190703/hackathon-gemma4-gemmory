@@ -104,10 +104,63 @@ class KnowledgeViewModel(
         }
     }
 
+    fun processSelectedAndApply(onComplete: () -> Unit) {
+        val ids = selectedInboxIds.value.toList()
+        if (ids.isEmpty()) return
+        processAndApply(
+            onComplete = onComplete,
+            deleteInboxIds = { changeSet -> (ids + changeSet.sourceInboxIds).distinct() },
+        ) {
+            repository.proposeProcessing(ids)
+        }
+    }
+
     fun processAll() {
         viewModelScope.launch {
             busy.value = true
             pendingChangeSet.value = repository.proposeAllUnprocessed()
+            busy.value = false
+        }
+    }
+
+    fun processAllAndApply(onComplete: () -> Unit) {
+        val visibleInboxIds = uiState.value.inbox.map { it.id }
+        processAndApply(
+            onComplete = onComplete,
+            deleteInboxIds = { changeSet -> (visibleInboxIds + changeSet.sourceInboxIds).distinct() },
+        ) {
+            repository.proposeAllUnprocessed()
+        }
+    }
+
+    private fun processAndApply(
+        onComplete: () -> Unit,
+        deleteInboxIds: (ProposedVaultChangeSet) -> List<String>,
+        propose: suspend () -> ProposedVaultChangeSet,
+    ) {
+        viewModelScope.launch {
+            busy.value = true
+            banner.value = "Processing inbox notes. Please wait until it is done."
+            runCatching {
+                val changeSet = propose()
+                if (!changeSet.canApply) {
+                    pendingChangeSet.value = changeSet.takeIf { it.validationErrors.isNotEmpty() }
+                    error(
+                        changeSet.validationErrors.firstOrNull()
+                            ?: "No inbox notes to process.",
+                    )
+                }
+                val result = repository.apply(changeSet)
+                repository.deleteInboxEntries(deleteInboxIds(changeSet))
+                result
+            }.onSuccess {
+                banner.value = "Processed ${it.affectedNoteIds.size} vault note(s)."
+                pendingChangeSet.value = null
+                selectedInboxIds.value = emptySet()
+                onComplete()
+            }.onFailure {
+                banner.value = it.message ?: "Unable to process inbox notes"
+            }
             busy.value = false
         }
     }
@@ -143,6 +196,19 @@ class KnowledgeViewModel(
     fun openNote(noteId: String) {
         viewModelScope.launch {
             selectedNote.value = repository.getNote(noteId)
+        }
+    }
+
+    fun deleteNote(noteId: String) {
+        viewModelScope.launch {
+            busy.value = true
+            runCatching { repository.deleteNote(noteId) }
+                .onSuccess { deleted ->
+                    banner.value = if (deleted) "Removed note from vault." else "Note was already removed."
+                    if (selectedNote.value?.id == noteId) selectedNote.value = null
+                }
+                .onFailure { banner.value = it.message ?: "Unable to remove note" }
+            busy.value = false
         }
     }
 

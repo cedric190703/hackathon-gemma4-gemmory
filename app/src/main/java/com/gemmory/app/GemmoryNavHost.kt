@@ -112,8 +112,26 @@ fun GemmoryNavHost(viewModel: ChatViewModel, knowledgeViewModel: KnowledgeViewMo
                     state = knowledgeState,
                     onCapture = knowledgeViewModel::capture,
                     onToggle = knowledgeViewModel::toggleInboxSelection,
-                    onProcessSelected = knowledgeViewModel::processSelected,
-                    onProcessAll = knowledgeViewModel::processAll,
+                    onProcessSelected = {
+                        knowledgeViewModel.processSelectedAndApply {
+                            navController.navigate(Routes.CHAT) {
+                                launchSingleTop = true
+                                popUpTo(Routes.CHAT) {
+                                    inclusive = false
+                                }
+                            }
+                        }
+                    },
+                    onProcessAll = {
+                        knowledgeViewModel.processAllAndApply {
+                            navController.navigate(Routes.CHAT) {
+                                launchSingleTop = true
+                                popUpTo(Routes.CHAT) {
+                                    inclusive = false
+                                }
+                            }
+                        }
+                    },
                     onApply = knowledgeViewModel::applyPending,
                     onReject = knowledgeViewModel::rejectPending,
                 )
@@ -124,6 +142,7 @@ fun GemmoryNavHost(viewModel: ChatViewModel, knowledgeViewModel: KnowledgeViewMo
                     state = knowledgeState,
                     onSearch = knowledgeViewModel::setSearchQuery,
                     onOpenNote = knowledgeViewModel::openNote,
+                    onDeleteNote = knowledgeViewModel::deleteNote,
                     onOpenGraph = { context.startActivity(Intent(context, VaultGraphActivity::class.java)) },
                     onUndo = knowledgeViewModel::undoLatest,
                 )

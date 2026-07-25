@@ -267,6 +267,8 @@ class FakeVaultRepository(
 
     override suspend fun updateInboxText(id: String, text: String) = Unit
 
+    override suspend fun deleteInboxEntries(ids: List<String>) = Unit
+
     override suspend fun proposeProcessing(entryIds: List<String>): ProposedVaultChangeSet =
         emptyChangeSet("process")
 
@@ -286,6 +288,8 @@ class FakeVaultRepository(
     override suspend fun undoLatest(): UndoResult? = null
 
     override suspend fun getNote(noteId: String): VaultNote? = null
+
+    override suspend fun deleteNote(noteId: String): Boolean = true
 
     override suspend fun search(query: String, limit: Int): List<VaultSearchResult> = emptyList()
 

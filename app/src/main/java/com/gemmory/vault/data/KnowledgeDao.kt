@@ -25,6 +25,9 @@ interface KnowledgeDao {
     @Update
     suspend fun updateInbox(entry: InboxEntryEntity)
 
+    @Query("DELETE FROM inbox_entries WHERE id IN (:ids)")
+    suspend fun deleteInboxEntries(ids: List<String>)
+
     @Query("SELECT * FROM inbox_entries ORDER BY created_at DESC")
     fun observeInbox(): Flow<List<InboxEntryEntity>>
 
@@ -75,6 +78,9 @@ interface KnowledgeDao {
 
     @Query("DELETE FROM vault_links WHERE source_note_id = :noteId")
     suspend fun deleteLinksFrom(noteId: String)
+
+    @Query("DELETE FROM vault_links WHERE source_note_id = :noteId OR target_note_id = :noteId")
+    suspend fun deleteLinksTouching(noteId: String)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLinks(links: List<VaultLinkEntity>)
