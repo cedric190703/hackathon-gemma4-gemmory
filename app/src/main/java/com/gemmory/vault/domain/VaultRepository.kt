@@ -47,9 +47,10 @@ interface VaultAnswerGenerator {
 
 interface VaultNoteProcessor {
     /**
-     * Returns null when the local model is unavailable or generation fails. Note
-     * processing intentionally has no deterministic fallback because it is
-     * expected to rewrite and connect thoughts.
+     * Returns null when the local model is unavailable. Returns an empty list
+     * when the model ran but did not produce a valid proposal. Note processing
+     * intentionally has no deterministic fallback because it is expected to
+     * rewrite and connect thoughts.
      */
     suspend fun processInbox(
         entries: List<VaultProcessingInboxEntry>,

@@ -17,7 +17,10 @@ class EngineController(
     val engine: LocalLlmEngine,
     private val scope: CoroutineScope,
 ) {
+    @Volatile
     private var loadJob: Job? = null
+
+    @Volatile
     private var loadedPath: String? = null
 
     @Volatile
@@ -36,6 +39,19 @@ class EngineController(
             AppLog.i(TAG, "loading model")
             engine.initialize(modelPath)
         }
+    }
+
+    /**
+     * Waits for the current controller-owned load to finish.
+     *
+     * Returns false when no load is running, the load failed, or the engine was
+     * unloaded while the caller was waiting.
+     */
+    suspend fun awaitReady(): Boolean {
+        if (engine.diagnostics.value.state is EngineState.Ready) return true
+        val currentLoad = loadJob
+        if (currentLoad?.isActive == true) currentLoad.join()
+        return engine.diagnostics.value.state is EngineState.Ready
     }
 
     /** Clears a previous failure so the user can explicitly retry. */

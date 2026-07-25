@@ -2,9 +2,9 @@ package com.gemmory.vaultagent
 
 import com.gemmory.core.logging.AppLog
 import com.gemmory.inference.EngineController
-import com.gemmory.inference.EngineState
 import com.gemmory.inference.GenerationEvent
 import com.gemmory.inference.GenerationOptions
+import com.gemmory.inference.InferenceError
 import com.gemmory.vault.domain.ProcessedVaultNoteDraft
 import com.gemmory.vault.domain.VaultNoteProcessor
 import com.gemmory.vault.domain.VaultProcessingExistingNote
@@ -31,7 +31,7 @@ class LocalLlmVaultNoteProcessor(
             .map { it.copy(text = it.text.trim()) }
             .filter { it.text.isNotBlank() }
         if (cleanEntries.isEmpty()) return emptyList()
-        if (engineController.engine.diagnostics.value.state !is EngineState.Ready) return null
+        if (!engineController.awaitReady()) return null
 
         val conversationId = "process-vault-${UUID.randomUUID()}"
         engineController.resetConversation(
@@ -42,7 +42,8 @@ class LocalLlmVaultNoteProcessor(
 
         val builder = StringBuilder()
         var completed = false
-        var failed = false
+        var failure: InferenceError? = null
+        var cancelled = false
         engineController.generate(
             conversationId = conversationId,
             prompt = buildPrompt(cleanEntries, existingNotes),
@@ -55,16 +56,19 @@ class LocalLlmVaultNoteProcessor(
 
                 is GenerationEvent.Token -> builder.append(event.text)
                 GenerationEvent.Completed -> completed = true
-                GenerationEvent.Cancelled -> failed = true
+                GenerationEvent.Cancelled -> cancelled = true
                 is GenerationEvent.Failed -> {
                     AppLog.w(TAG, "vault note processing failed: ${event.error::class.simpleName}")
-                    failed = true
+                    failure = event.error
                 }
             }
         }
 
-        if (failed || !completed) return null
-        return parseResponse(builder.toString(), cleanEntries.map { it.id }.toSet())
+        failure?.let { error ->
+            return if (error == InferenceError.EngineNotReady) null else emptyList()
+        }
+        if (cancelled || !completed) return emptyList()
+        return parseResponse(builder.toString(), cleanEntries.map { it.id }.toSet()).orEmpty()
     }
 
     private fun buildPrompt(
@@ -189,8 +193,8 @@ class LocalLlmVaultNoteProcessor(
 
     private companion object {
         const val TAG = "VaultNoteProcessor"
-        const val DEFAULT_MAX_INPUT_CHARACTERS = 16_000
-        const val MAX_EXISTING_NOTES_IN_PROMPT = 80
+        const val DEFAULT_MAX_INPUT_CHARACTERS = 8_000
+        const val MAX_EXISTING_NOTES_IN_PROMPT = 48
         const val MAX_TITLE_CHARACTERS = 96
         const val MAX_TAGS = 8
         const val MAX_ALIASES = 8
