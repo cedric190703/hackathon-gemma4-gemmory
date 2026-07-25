@@ -52,6 +52,9 @@ class RoomVaultRepository(
             notes.map { VaultEntry(it.id, it.path, it.title, it.archived) }
         }
 
+    override fun observeAllLinks(): Flow<List<VaultLink>> =
+        dao.observeLinks().map { links -> links.map { it.toDomain() } }
+
     override fun observeGraph(): Flow<VaultGraph> =
         dao.observeNotes().combine(dao.observeLinks()) { notes, links ->
             buildGraph(notes, links)

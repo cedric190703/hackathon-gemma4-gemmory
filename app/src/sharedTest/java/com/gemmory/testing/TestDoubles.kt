@@ -245,6 +245,8 @@ class FakeVaultRepository(
 
     override fun observeNotes(): Flow<List<VaultEntry>> = flowOf(emptyList())
 
+    override fun observeAllLinks(): Flow<List<VaultLink>> = flowOf(emptyList())
+
     override fun observeGraph(): Flow<VaultGraph> = flowOf(VaultGraph())
 
     override fun observeBacklinks(noteId: String): Flow<List<VaultLink>> = flowOf(emptyList())

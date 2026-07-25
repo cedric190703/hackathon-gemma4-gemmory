@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.Flow
 interface VaultRepository {
     fun observeInbox(): Flow<List<InboxEntry>>
     fun observeNotes(): Flow<List<VaultEntry>>
+    fun observeAllLinks(): Flow<List<VaultLink>>
     fun observeGraph(): Flow<VaultGraph>
     fun observeBacklinks(noteId: String): Flow<List<VaultLink>>
     fun observeOutgoingLinks(noteId: String): Flow<List<VaultLink>>

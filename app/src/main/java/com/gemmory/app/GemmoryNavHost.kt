@@ -1,5 +1,6 @@
 package com.gemmory.app
 
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
@@ -120,6 +121,7 @@ fun GemmoryNavHost(viewModel: ChatViewModel, knowledgeViewModel: KnowledgeViewMo
                     state = knowledgeState,
                     onSearch = knowledgeViewModel::setSearchQuery,
                     onOpenNote = knowledgeViewModel::openNote,
+                    onOpenGraph = { context.startActivity(Intent(context, VaultGraphActivity::class.java)) },
                     onUndo = knowledgeViewModel::undoLatest,
                 )
             }
