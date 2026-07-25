@@ -16,7 +16,6 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -64,7 +63,6 @@ fun ChatScreen(
     onOpenSessions: () -> Unit,
     onOpenInbox: () -> Unit,
     onOpenVault: () -> Unit,
-    onOpenAsk: () -> Unit,
     onOpenSettings: () -> Unit,
     onDownloadModel: () -> Unit,
     onImportModel: () -> Unit,
@@ -109,9 +107,6 @@ fun ChatScreen(
                     }
                     IconButton(onClick = onOpenVault) {
                         Icon(Icons.Filled.Folder, contentDescription = "Vault")
-                    }
-                    IconButton(onClick = onOpenAsk) {
-                        Icon(Icons.Filled.Search, contentDescription = "Ask Vault")
                     }
                     IconButton(
                         onClick = onNewConversation,

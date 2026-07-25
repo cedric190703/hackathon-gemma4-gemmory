@@ -3,7 +3,9 @@ package com.gemmory.app
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -17,16 +19,12 @@ import com.gemmory.modelinstall.isBusy
 import com.gemmory.settings.SettingsScreen
 import com.gemmory.vault.presentation.KnowledgeViewModel
 import com.gemmory.vault.presentation.VaultScreen
-import com.gemmory.vaultagent.presentation.AskVaultScreen
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.platform.LocalContext
 
 private object Routes {
     const val CHAT = "chat"
     const val CONVERSATIONS = "conversations"
     const val INBOX = "inbox"
     const val VAULT = "vault"
-    const val ASK = "ask"
     const val SETTINGS = "settings"
 }
 
@@ -58,13 +56,12 @@ fun GemmoryNavHost(viewModel: ChatViewModel, knowledgeViewModel: KnowledgeViewMo
                 inputValue = input,
                 streamingText = streamingText,
                 onInputChange = viewModel::onInputChange,
-                onSend = viewModel::send,
+                onSend = viewModel::sendVaultQuestion,
                 onStop = viewModel::stop,
                 onNewConversation = viewModel::newConversation,
                 onOpenSessions = { navController.navigate(Routes.CONVERSATIONS) },
                 onOpenInbox = { navController.navigate(Routes.INBOX) },
                 onOpenVault = { navController.navigate(Routes.VAULT) },
-                onOpenAsk = { navController.navigate(Routes.ASK) },
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onDownloadModel = { viewModel.downloadModel() },
                 onImportModel = { importLauncher.launch(arrayOf("*/*")) },
@@ -116,13 +113,6 @@ fun GemmoryNavHost(viewModel: ChatViewModel, knowledgeViewModel: KnowledgeViewMo
                 onSearch = knowledgeViewModel::setSearchQuery,
                 onOpenNote = knowledgeViewModel::openNote,
                 onUndo = knowledgeViewModel::undoLatest,
-            )
-        }
-
-        composable(Routes.ASK) {
-            AskVaultScreen(
-                state = knowledgeState,
-                onAsk = knowledgeViewModel::ask,
             )
         }
 
