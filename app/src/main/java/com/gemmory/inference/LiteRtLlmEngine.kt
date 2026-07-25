@@ -96,6 +96,7 @@ class LiteRtLlmEngine(
             val startedAt = System.currentTimeMillis()
 
             for (kind in chain) {
+                ExperimentalFlags.enableSpeculativeDecoding = kind == BackendKind.GPU
                 val candidate = try {
                     Engine(
                         EngineConfig(

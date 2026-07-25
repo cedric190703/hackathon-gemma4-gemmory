@@ -72,7 +72,6 @@ class ChatScreenTest {
                 onOpenSessions = {},
                 onOpenInbox = {},
                 onOpenVault = {},
-                onOpenAsk = {},
                 onOpenSettings = {},
                 onDownloadModel = { viewModel.downloadModel() },
                 onImportModel = {},

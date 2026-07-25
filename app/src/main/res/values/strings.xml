@@ -3,4 +3,5 @@
     <string name="app_name">Gemmory</string>
     <string name="model_install_channel_name">Model installation</string>
     <string name="model_install_notification_title">Installing Gemma 4 E2B</string>
+    <string name="vault_graph_title">Vault graph</string>
 </resources>

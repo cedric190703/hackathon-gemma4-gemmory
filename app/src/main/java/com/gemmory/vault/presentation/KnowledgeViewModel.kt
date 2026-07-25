@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 data class KnowledgeUiState(
     val inbox: List<InboxEntry> = emptyList(),
@@ -27,15 +26,8 @@ data class KnowledgeUiState(
     val searchResults: List<VaultSearchResult> = emptyList(),
     val selectedInboxIds: Set<String> = emptySet(),
     val pendingChangeSet: ProposedVaultChangeSet? = null,
-    val askMessages: List<AskMessage> = emptyList(),
     val busy: Boolean = false,
     val banner: String? = null,
-)
-
-data class AskMessage(
-    val id: String,
-    val role: String,
-    val text: String,
 )
 
 class KnowledgeViewModel(
@@ -47,10 +39,8 @@ class KnowledgeViewModel(
     private val searchResults = MutableStateFlow<List<VaultSearchResult>>(emptyList())
     private val selectedInboxIds = MutableStateFlow<Set<String>>(emptySet())
     private val pendingChangeSet = MutableStateFlow<ProposedVaultChangeSet?>(null)
-    private val askMessages = MutableStateFlow<List<AskMessage>>(emptyList())
     private val busy = MutableStateFlow(false)
     private val banner = MutableStateFlow<String?>(null)
-    private val conversationId = UUID.randomUUID().toString()
 
     private val inbox = repository.observeInbox()
     private val notes = repository.observeNotes()
@@ -59,7 +49,7 @@ class KnowledgeViewModel(
     val uiState: StateFlow<KnowledgeUiState> = combine(
         combine(inbox, notes, graph, selectedNote, ::VaultSnapshot),
         combine(searchQuery, searchResults, selectedInboxIds, ::Triple),
-        combine(pendingChangeSet, askMessages, busy, ::Triple),
+        combine(pendingChangeSet, busy, ::Pair),
         banner,
     ) { first, second, third, message ->
         KnowledgeUiState(
@@ -71,8 +61,7 @@ class KnowledgeViewModel(
             searchResults = second.second,
             selectedInboxIds = second.third,
             pendingChangeSet = third.first,
-            askMessages = third.second,
-            busy = third.third,
+            busy = third.second,
             banner = message,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), KnowledgeUiState())
@@ -103,10 +92,63 @@ class KnowledgeViewModel(
         }
     }
 
+    fun processSelectedAndApply(onComplete: () -> Unit) {
+        val ids = selectedInboxIds.value.toList()
+        if (ids.isEmpty()) return
+        processAndApply(
+            onComplete = onComplete,
+            deleteInboxIds = { changeSet -> (ids + changeSet.sourceInboxIds).distinct() },
+        ) {
+            repository.proposeProcessing(ids)
+        }
+    }
+
     fun processAll() {
         viewModelScope.launch {
             busy.value = true
             pendingChangeSet.value = repository.proposeAllUnprocessed()
+            busy.value = false
+        }
+    }
+
+    fun processAllAndApply(onComplete: () -> Unit) {
+        val visibleInboxIds = uiState.value.inbox.map { it.id }
+        processAndApply(
+            onComplete = onComplete,
+            deleteInboxIds = { changeSet -> (visibleInboxIds + changeSet.sourceInboxIds).distinct() },
+        ) {
+            repository.proposeAllUnprocessed()
+        }
+    }
+
+    private fun processAndApply(
+        onComplete: () -> Unit,
+        deleteInboxIds: (ProposedVaultChangeSet) -> List<String>,
+        propose: suspend () -> ProposedVaultChangeSet,
+    ) {
+        viewModelScope.launch {
+            busy.value = true
+            banner.value = "Processing inbox notes. Please wait until it is done."
+            runCatching {
+                val changeSet = propose()
+                if (!changeSet.canApply) {
+                    pendingChangeSet.value = changeSet.takeIf { it.validationErrors.isNotEmpty() }
+                    error(
+                        changeSet.validationErrors.firstOrNull()
+                            ?: "No inbox notes to process.",
+                    )
+                }
+                val result = repository.apply(changeSet)
+                repository.deleteInboxEntries(deleteInboxIds(changeSet))
+                result
+            }.onSuccess {
+                banner.value = "Processed ${it.affectedNoteIds.size} vault note(s)."
+                pendingChangeSet.value = null
+                selectedInboxIds.value = emptySet()
+                onComplete()
+            }.onFailure {
+                banner.value = it.message ?: "Unable to process inbox notes"
+            }
             busy.value = false
         }
     }
@@ -145,24 +187,23 @@ class KnowledgeViewModel(
         }
     }
 
+    fun deleteNote(noteId: String) {
+        viewModelScope.launch {
+            busy.value = true
+            runCatching { repository.deleteNote(noteId) }
+                .onSuccess { deleted ->
+                    banner.value = if (deleted) "Removed note from vault." else "Note was already removed."
+                    if (selectedNote.value?.id == noteId) selectedNote.value = null
+                }
+                .onFailure { banner.value = it.message ?: "Unable to remove note" }
+            busy.value = false
+        }
+    }
+
     fun setSearchQuery(query: String) {
         searchQuery.value = query
         viewModelScope.launch {
             searchResults.value = repository.search(query, limit = 20)
-        }
-    }
-
-    fun ask(question: String) {
-        if (question.isBlank()) return
-        viewModelScope.launch {
-            askMessages.value += AskMessage(UUID.randomUUID().toString(), "USER", question)
-            busy.value = true
-            runCatching { repository.answerVaultQuestion(conversationId, question) }
-                .onSuccess { answer ->
-                    askMessages.value += AskMessage(UUID.randomUUID().toString(), "ASSISTANT", answer)
-                }
-                .onFailure { banner.value = it.message ?: "Unable to answer from the vault" }
-            busy.value = false
         }
     }
 

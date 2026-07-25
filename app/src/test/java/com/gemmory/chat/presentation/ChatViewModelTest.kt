@@ -63,7 +63,7 @@ class ChatViewModelTest {
         )
         // Keep the state flow hot for the duration of the test.
         backgroundScope.launch { viewModel.uiState.collect {} }
-        return Fixture(viewModel, repository, vaultRepository, engine, installer)
+        return Fixture(viewModel, repository, vaultRepository, engine, installer, controller)
     }
 
     private data class Fixture(
@@ -72,6 +72,7 @@ class ChatViewModelTest {
         val vaultRepository: FakeVaultRepository,
         val engine: FakeLlmEngine,
         val installer: FakeModelInstaller,
+        val controller: EngineController,
     )
 
     // ------------------------------------------------------- state transitions
@@ -382,6 +383,32 @@ class ChatViewModelTest {
             "the model must not be re-primed for every message",
             afterFirst,
             fixture.engine.resetCallCount,
+        )
+    }
+
+    @Test
+    fun `chat history is replayed after another feature uses the engine`() = runTest {
+        val fixture = buildViewModel()
+        advanceUntilIdle()
+
+        fixture.viewModel.onInputChange("one")
+        fixture.viewModel.send()
+        advanceUntilIdle()
+
+        fixture.controller.resetConversation("ask-vault", emptyList())
+        val afterExternalUse = fixture.engine.resetCallCount
+
+        fixture.viewModel.onInputChange("two")
+        fixture.viewModel.send()
+        advanceUntilIdle()
+
+        assertTrue(fixture.engine.resetCallCount > afterExternalUse)
+        assertEquals(
+            listOf(
+                ConversationTurn(TurnRole.USER, "one"),
+                ConversationTurn(TurnRole.ASSISTANT, "Hello, world!"),
+            ),
+            fixture.engine.lastReplayedHistory,
         )
     }
 
