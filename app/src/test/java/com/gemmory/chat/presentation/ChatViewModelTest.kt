@@ -15,6 +15,7 @@ import com.gemmory.modelinstall.ModelInstallState
 import com.gemmory.testing.FakeChatRepository
 import com.gemmory.testing.FakeModelInstaller
 import com.gemmory.testing.FakeSettingsRepository
+import com.gemmory.testing.FakeVaultRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -46,6 +47,7 @@ class ChatViewModelTest {
 
     private fun TestScope.buildViewModel(
         repository: FakeChatRepository = FakeChatRepository(),
+        vaultRepository: FakeVaultRepository = FakeVaultRepository(),
         engine: FakeLlmEngine = FakeLlmEngine(),
         installer: FakeModelInstaller = FakeModelInstaller(),
         settings: FakeSettingsRepository = FakeSettingsRepository(),
@@ -53,6 +55,7 @@ class ChatViewModelTest {
         val controller = EngineController(engine, this)
         val viewModel = ChatViewModel(
             repository = repository,
+            vaultRepository = vaultRepository,
             installer = installer,
             engineController = controller,
             settingsRepository = settings,
@@ -60,12 +63,13 @@ class ChatViewModelTest {
         )
         // Keep the state flow hot for the duration of the test.
         backgroundScope.launch { viewModel.uiState.collect {} }
-        return Fixture(viewModel, repository, engine, installer, controller)
+        return Fixture(viewModel, repository, vaultRepository, engine, installer, controller)
     }
 
     private data class Fixture(
         val viewModel: ChatViewModel,
         val repository: FakeChatRepository,
+        val vaultRepository: FakeVaultRepository,
         val engine: FakeLlmEngine,
         val installer: FakeModelInstaller,
         val controller: EngineController,
@@ -189,6 +193,25 @@ class ChatViewModelTest {
         fixture.viewModel.send()
 
         assertEquals("", fixture.viewModel.input.value)
+    }
+
+    @Test
+    fun `main chat can answer a vault question`() = runTest {
+        val fixture = buildViewModel(
+            vaultRepository = FakeVaultRepository { _, question -> "Found in vault: $question" },
+        )
+        advanceUntilIdle()
+
+        fixture.viewModel.onInputChange("where is the launch note?")
+        fixture.viewModel.sendVaultQuestion()
+        advanceUntilIdle()
+
+        val messages = fixture.repository.snapshot()
+        assertEquals(2, messages.size)
+        assertEquals("where is the launch note?", messages[0].content)
+        assertEquals("Found in vault: where is the launch note?", messages[1].content)
+        assertEquals(MessageStatus.COMPLETE, messages[1].status)
+        assertEquals(listOf(messages[0].conversationId to "where is the launch note?"), fixture.vaultRepository.askedQuestions)
     }
 
     @Test

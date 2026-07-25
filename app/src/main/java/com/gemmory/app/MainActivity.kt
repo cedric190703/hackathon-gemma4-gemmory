@@ -20,6 +20,7 @@ class MainActivity : ComponentActivity() {
             this,
             ChatViewModel.factory(
                 repository = container.chatRepository,
+                vaultRepository = container.vaultRepository,
                 installer = container.modelInstaller,
                 engineController = container.engineController,
                 settingsRepository = container.settingsRepository,

@@ -52,6 +52,12 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".app.VaultGraphActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode|density|fontScale"
+            android:exported="false"
+            android:label="@string/vault_graph_title" />
+
         <service
             android:name=".modelinstall.ModelInstallService"
             android:exported="false"

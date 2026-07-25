@@ -1,8 +1,10 @@
 package com.gemmory.chat.presentation
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -19,6 +21,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -101,57 +104,35 @@ fun ChatScreen(
                         )
                     }
                 },
-                navigationIcon = {
-                    IconButton(onClick = onOpenSessions, enabled = !blocksWorkflow) {
-                        Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Notes")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onOpenInbox) {
-                        Icon(Icons.Filled.Email, contentDescription = "Inbox")
-                    }
-                    IconButton(onClick = onOpenVault) {
-                        Icon(Icons.Filled.Folder, contentDescription = "Vault")
-                    }
-                    IconButton(onClick = onOpenAsk) {
-                        Icon(Icons.Filled.Search, contentDescription = "Ask Vault")
-                    }
-                    IconButton(
-                        onClick = onNewConversation,
-                        enabled = !blocksWorkflow,
-                        modifier = Modifier.testTag(TAG_NEW_CONVERSATION),
-                    ) {
-                        Icon(Icons.Filled.Add, contentDescription = "New note")
-                    }
-                    IconButton(onClick = onOpenSettings, enabled = !blocksWorkflow) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
                     scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-                    navigationIconContentColor = MaterialTheme.colorScheme.primary,
-                    actionIconContentColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
                 ),
             )
         },
         bottomBar = {
-            if (state.showsChat && !blocksWorkflow) {
-                ChatInputBar(
-                    value = inputValue,
-                    onValueChange = onInputChange,
-                    onSend = onSend,
-                    onStop = onStop,
-                    isGenerating = state.isGenerating,
-                    enabled = state.canSendPrompt,
-                    placeholder = when (state.topLevelState) {
-                        TopLevelState.MODEL_LOADING -> "Loading the model…"
-                        TopLevelState.GENERATING -> "Generating…"
-                        else -> "Add a note or ask your vault"
-                    },
-                )
-            }
+            ChatBottomBar(
+                showInput = state.showsChat && !blocksWorkflow,
+                inputValue = inputValue,
+                onInputChange = onInputChange,
+                onSend = onSend,
+                onStop = onStop,
+                isGenerating = state.isGenerating,
+                canSendPrompt = state.canSendPrompt,
+                placeholder = when (state.topLevelState) {
+                    TopLevelState.MODEL_LOADING -> "Loading the model…"
+                    TopLevelState.GENERATING -> "Generating…"
+                    else -> "Add a note or ask your vault"
+                },
+                blocksWorkflow = blocksWorkflow,
+                onOpenSessions = onOpenSessions,
+                onOpenInbox = onOpenInbox,
+                onOpenVault = onOpenVault,
+                onOpenAsk = onOpenAsk,
+                onNewConversation = onNewConversation,
+                onOpenSettings = onOpenSettings,
+            )
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
@@ -187,6 +168,75 @@ fun ChatScreen(
                     isLoadingEngine = state.topLevelState == TopLevelState.MODEL_LOADING,
                     modifier = Modifier.weight(1f),
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChatBottomBar(
+    showInput: Boolean,
+    inputValue: String,
+    onInputChange: (String) -> Unit,
+    onSend: () -> Unit,
+    onStop: () -> Unit,
+    isGenerating: Boolean,
+    canSendPrompt: Boolean,
+    placeholder: String,
+    blocksWorkflow: Boolean,
+    onOpenSessions: () -> Unit,
+    onOpenInbox: () -> Unit,
+    onOpenVault: () -> Unit,
+    onOpenAsk: () -> Unit,
+    onNewConversation: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+        tonalElevation = 0.dp,
+    ) {
+        Column(Modifier.fillMaxWidth()) {
+            if (showInput) {
+                ChatInputBar(
+                    value = inputValue,
+                    onValueChange = onInputChange,
+                    onSend = onSend,
+                    onStop = onStop,
+                    isGenerating = isGenerating,
+                    enabled = canSendPrompt,
+                    placeholder = placeholder,
+                )
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onOpenSessions, enabled = !blocksWorkflow) {
+                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Notes")
+                }
+                IconButton(onClick = onOpenInbox) {
+                    Icon(Icons.Filled.Email, contentDescription = "Inbox")
+                }
+                IconButton(onClick = onOpenVault) {
+                    Icon(Icons.Filled.Folder, contentDescription = "Vault")
+                }
+                IconButton(onClick = onOpenAsk) {
+                    Icon(Icons.Filled.Search, contentDescription = "Ask Vault")
+                }
+                IconButton(
+                    onClick = onNewConversation,
+                    enabled = !blocksWorkflow,
+                    modifier = Modifier.testTag(TAG_NEW_CONVERSATION),
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = "New note")
+                }
+                IconButton(onClick = onOpenSettings, enabled = !blocksWorkflow) {
+                    Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                }
             }
         }
     }

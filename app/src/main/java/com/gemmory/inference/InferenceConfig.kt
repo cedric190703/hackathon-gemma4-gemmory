@@ -67,7 +67,7 @@ data class InferenceConfig(
          */
         const val DEFAULT_CONTEXT_BUDGET_TOKENS = 2560
 
-        const val DEFAULT_SYSTEM_PROMPT =
+        val DEFAULT_SYSTEM_PROMPT =
             """
             You are Gemmory, a concise, helpful assistant running fully offline on the user's phone.
 
