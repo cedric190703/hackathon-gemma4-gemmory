@@ -39,6 +39,9 @@ interface MessageDao {
         errorText: String?,
     )
 
+    @Query("UPDATE messages SET content = :content WHERE id = :id AND conversation_id = :conversationId")
+    suspend fun updateContent(id: String, conversationId: String, content: String)
+
     /**
      * Any message left mid-flight by a process death is demoted to `CANCELLED`,
      * so a restart can never present a partial answer as complete.
@@ -52,6 +55,6 @@ interface MessageDao {
     )
     suspend fun demoteUnfinished(cancelled: String, pending: String, generating: String): Int
 
-    @Query("DELETE FROM messages WHERE id = :id")
-    suspend fun delete(id: String)
+    @Query("DELETE FROM messages WHERE id = :id AND conversation_id = :conversationId")
+    suspend fun delete(id: String, conversationId: String)
 }

@@ -295,6 +295,34 @@ class ChatViewModel(
         }
     }
 
+    fun renameConversation(id: String, title: String) {
+        val clean = title.trim()
+        if (clean.isEmpty()) return
+        viewModelScope.launch {
+            repository.renameSession(id, clean)
+        }
+    }
+
+    fun editMessage(messageId: String, messageConversationId: String, content: String) {
+        val clean = content.trim()
+        if (clean.isEmpty()) return
+        viewModelScope.launch {
+            repository.updateMessageContent(messageConversationId, messageId, clean)
+            if (conversationId.value == messageConversationId) {
+                preparedConversationId = null
+            }
+        }
+    }
+
+    fun deleteMessage(messageId: String, messageConversationId: String) {
+        viewModelScope.launch {
+            repository.deleteMessage(messageConversationId, messageId)
+            if (conversationId.value == messageConversationId) {
+                preparedConversationId = null
+            }
+        }
+    }
+
     fun dismissBanner() {
         banner.value = null
     }
@@ -422,7 +450,7 @@ class ChatViewModel(
         is ModelInstallState.Verifying -> TopLevelState.MODEL_VERIFYING
         is ModelInstallState.Failed -> TopLevelState.RECOVERABLE_ERROR
         is ModelInstallState.Installed -> when (engineState) {
-            EngineState.Idle, EngineState.Closed -> TopLevelState.MODEL_READY_UNLOADED
+            EngineState.Idle, EngineState.Closed -> TopLevelState.MODEL_LOADING
             EngineState.Loading -> TopLevelState.MODEL_LOADING
             is EngineState.Failed -> when (engineState.error) {
                 is InferenceError.UnsupportedDevice -> TopLevelState.UNSUPPORTED_DEVICE

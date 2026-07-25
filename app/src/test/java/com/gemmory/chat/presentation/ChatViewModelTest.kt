@@ -400,6 +400,59 @@ class ChatViewModelTest {
         assertTrue(fixture.viewModel.uiState.value.droppedContextMessages > 0)
     }
 
+    @Test
+    fun `renaming a note updates the active title`() = runTest {
+        val repository = FakeChatRepository()
+        repository.seedSession(ChatSession("old", "Old chat", 1, 1))
+        val fixture = buildViewModel(repository = repository)
+        advanceUntilIdle()
+
+        fixture.viewModel.renameConversation("old", "Renamed note")
+        advanceUntilIdle()
+
+        assertEquals("Renamed note", fixture.viewModel.uiState.value.title)
+    }
+
+    @Test
+    fun `editing a note changes the replayed context for the next answer`() = runTest {
+        val repository = FakeChatRepository()
+        repository.seedSession(ChatSession("old", "Old chat", 1, 1))
+        repository.seed(
+            ChatMessage("m0", "old", MessageRole.USER, "old note", MessageStatus.COMPLETE, 0, 1),
+            ChatMessage("m1", "old", MessageRole.ASSISTANT, "old answer", MessageStatus.COMPLETE, 1, 2),
+        )
+        val fixture = buildViewModel(repository = repository)
+        advanceUntilIdle()
+
+        fixture.viewModel.editMessage("m0", "old", "updated note")
+        advanceUntilIdle()
+        fixture.viewModel.onInputChange("next")
+        fixture.viewModel.send()
+        advanceUntilIdle()
+
+        assertEquals(
+            ConversationTurn(TurnRole.USER, "updated note"),
+            fixture.engine.lastReplayedHistory.first(),
+        )
+    }
+
+    @Test
+    fun `deleting a note removes it from the current conversation`() = runTest {
+        val repository = FakeChatRepository()
+        repository.seedSession(ChatSession("old", "Old chat", 1, 1))
+        repository.seed(
+            ChatMessage("m0", "old", MessageRole.USER, "note", MessageStatus.COMPLETE, 0, 1),
+        )
+        val fixture = buildViewModel(repository = repository)
+        advanceUntilIdle()
+
+        fixture.viewModel.deleteMessage("m0", "old")
+        advanceUntilIdle()
+
+        assertTrue(fixture.viewModel.uiState.value.messages.isEmpty())
+        assertTrue(repository.snapshot().isEmpty())
+    }
+
     // ----------------------------------------------------- model provisioning
 
     @Test
