@@ -14,6 +14,7 @@ import com.gemmory.vault.data.entities.VaultNoteFtsEntity
 import com.gemmory.vault.data.entities.VaultRevisionEntity
 import com.gemmory.vault.domain.ApplyResult
 import com.gemmory.vault.domain.LinkResolutionStatus
+import com.gemmory.vault.domain.ProcessedVaultNoteDraft
 import com.gemmory.vault.domain.ProposedVaultChangeSet
 import com.gemmory.vault.domain.UndoResult
 import com.gemmory.vault.domain.VaultAnswerGenerator
@@ -26,8 +27,11 @@ import com.gemmory.vault.domain.VaultGraphNode
 import com.gemmory.vault.domain.VaultLink
 import com.gemmory.vault.domain.VaultNote
 import com.gemmory.vault.domain.VaultNoteSummary
+import com.gemmory.vault.domain.VaultNoteProcessor
 import com.gemmory.vault.domain.VaultOperation
 import com.gemmory.vault.domain.VaultOperationPreview
+import com.gemmory.vault.domain.VaultProcessingExistingNote
+import com.gemmory.vault.domain.VaultProcessingInboxEntry
 import com.gemmory.vault.domain.VaultReadableNote
 import com.gemmory.vault.domain.VaultRepository
 import com.gemmory.vault.domain.VaultSearchResult
@@ -49,6 +53,7 @@ class RoomVaultRepository(
     private val storage: MarkdownVaultStorage,
     private val dispatchers: AppDispatchers,
     private val answerGenerator: VaultAnswerGenerator? = null,
+    private val noteProcessor: VaultNoteProcessor? = null,
 ) : VaultRepository {
 
     override fun observeInbox(): Flow<List<InboxEntry>> =
@@ -107,26 +112,78 @@ class RoomVaultRepository(
     override suspend fun proposeProcessing(entryIds: List<String>): ProposedVaultChangeSet =
         withContext(dispatchers.io) {
             val entries = dao.inboxByIds(entryIds).filter { it.text.isNotBlank() }
-            val operations = entries.map { entry ->
-                val title = deriveTitle(entry.text)
-                val path = "inbox/${slug(title)}.md"
+            val request = "Process ${entries.size} inbox entr${if (entries.size == 1) "y" else "ies"}"
+            val sourceInboxIds = entries.map { it.id }
+            if (entries.isEmpty()) {
+                return@withContext ProposedVaultChangeSet(
+                    id = UUID.randomUUID().toString(),
+                    userRequest = request,
+                    sourceInboxIds = sourceInboxIds,
+                    operations = emptyList(),
+                    validationErrors = listOf("No inbox notes to process."),
+                    previews = emptyList(),
+                )
+            }
+
+            val drafts = processInboxWithModel(entries)
+            if (drafts == null) {
+                return@withContext ProposedVaultChangeSet(
+                    id = UUID.randomUUID().toString(),
+                    userRequest = request,
+                    sourceInboxIds = sourceInboxIds,
+                    operations = emptyList(),
+                    validationErrors = listOf("Load the local model before processing notes."),
+                    previews = emptyList(),
+                )
+            }
+            if (drafts.isEmpty()) {
+                return@withContext ProposedVaultChangeSet(
+                    id = UUID.randomUUID().toString(),
+                    userRequest = request,
+                    sourceInboxIds = sourceInboxIds,
+                    operations = emptyList(),
+                    validationErrors = listOf("The model did not return any notes to process."),
+                    previews = emptyList(),
+                )
+            }
+            val coveredSourceIds = drafts.flatMap { it.sourceInboxIds }.filter { it in sourceInboxIds }.toSet()
+            val uncoveredSourceIds = sourceInboxIds.filter { it !in coveredSourceIds }
+            if (uncoveredSourceIds.isNotEmpty()) {
+                return@withContext ProposedVaultChangeSet(
+                    id = UUID.randomUUID().toString(),
+                    userRequest = request,
+                    sourceInboxIds = sourceInboxIds,
+                    operations = emptyList(),
+                    validationErrors = listOf("The model did not cover every selected inbox note. Try processing a smaller batch."),
+                    previews = emptyList(),
+                )
+            }
+
+            val existingPaths = dao.allActiveNotes().map { it.path }.toSet()
+            val proposedPaths = mutableSetOf<String>()
+            val operations = drafts.mapIndexed { index, draft ->
+                val title = draft.title.trim().ifBlank { "Processed note ${index + 1}" }
+                val path = uniqueInboxPath(title, existingPaths, proposedPaths)
+                val sourceIds = draft.sourceInboxIds.filter { it in sourceInboxIds }.distinct().ifEmpty { sourceInboxIds }
                 VaultOperation.CreateNote(
-                    temporaryId = "tmp-${entry.id}",
+                    temporaryId = "tmp-${sourceIds.joinToString("-")}-${index + 1}",
                     proposedPath = path,
                     title = title,
                     markdown = buildMarkdown(
                         id = "pending",
                         title = title,
-                        sourceInboxIds = listOf(entry.id),
-                        body = structureBody(entry.text),
+                        sourceInboxIds = sourceIds,
+                        tags = draft.tags,
+                        aliases = draft.aliases,
+                        body = draft.bodyMarkdown,
                     ),
-                    sourceInboxIds = listOf(entry.id),
+                    sourceInboxIds = sourceIds,
                 )
             }
             preview(
                 operations = operations,
-                request = "Process ${entries.size} inbox entr${if (entries.size == 1) "y" else "ies"}",
-                sourceInboxIds = entries.map { it.id },
+                request = request,
+                sourceInboxIds = sourceInboxIds,
             )
         }
 
@@ -341,11 +398,11 @@ class RoomVaultRepository(
                     createdAt = now,
                     userRequest = changeSet.userRequest,
                     sourceInboxIds = changeSet.sourceInboxIds.joinToString(","),
-                    reasoningSummary = "Applied locally validated vault operations.",
+                    reasoningSummary = "Applied model-proposed, locally validated vault operations.",
                     operations = changeSet.operations.joinToString("\n") { it.toString() },
                     beforeState = before.joinToString("\u001e"),
                     afterState = after.joinToString("\u001e"),
-                    modelConfiguration = "local-deterministic-v1",
+                    modelConfiguration = "local-llm-vault-processing-v1",
                     approvalStatus = "APPROVED",
                     undoneAt = null,
                 ),
@@ -510,6 +567,25 @@ class RoomVaultRepository(
                 backlinks = dao.backlinks(note.id).map { it.toDomain() },
             )
         }
+    }
+
+    private suspend fun processInboxWithModel(entries: List<InboxEntryEntity>): List<ProcessedVaultNoteDraft>? = try {
+        noteProcessor?.processInbox(
+            entries = entries.map { VaultProcessingInboxEntry(it.id, it.text) },
+            existingNotes = dao.allActiveNotes().map { note ->
+                VaultProcessingExistingNote(
+                    noteId = note.id,
+                    title = note.title,
+                    path = note.path,
+                    tags = split(note.tags),
+                    aliases = split(note.aliases),
+                )
+            },
+        )
+    } catch (ce: CancellationException) {
+        throw ce
+    } catch (_: Throwable) {
+        null
     }
 
     private suspend fun validate(operations: List<VaultOperation>): List<String> {
@@ -700,13 +776,20 @@ class RoomVaultRepository(
         )
     }
 
-    private fun buildMarkdown(id: String, title: String, sourceInboxIds: List<String>, body: String): String =
+    private fun buildMarkdown(
+        id: String,
+        title: String,
+        sourceInboxIds: List<String>,
+        tags: List<String>,
+        aliases: List<String>,
+        body: String,
+    ): String =
         """
         ---
-        id: "$id"
-        title: "$title"
-        tags:
-        aliases:
+        id: "${yamlScalar(id)}"
+        title: "${yamlScalar(title)}"
+        ${frontmatterList("tags", tags)}
+        ${frontmatterList("aliases", aliases)}
         sources:
         ${sourceInboxIds.joinToString("\n") { "  - inbox:$it" }}
         ---
@@ -720,26 +803,30 @@ class RoomVaultRepository(
         ${sourceInboxIds.joinToString("\n") { "- inbox:$it" }}
         """.trimIndent()
 
-    private fun structureBody(text: String): String {
-        val lines = text.lines().map { it.trim() }.filter { it.isNotBlank() }
-        return buildString {
-            append("## Notes\n\n")
-            lines.forEach { append("- $it\n") }
-            append("\n## Open questions\n\n")
-            lines.filter { it.endsWith("?") }.forEach { append("- $it\n") }
-        }.trim()
-    }
+    private fun frontmatterList(name: String, values: List<String>): String =
+        if (values.isEmpty()) {
+            "$name:"
+        } else {
+            values.joinToString("\n", prefix = "$name:\n") { "  - \"${yamlScalar(it)}\"" }
+        }
 
-    private fun deriveTitle(text: String): String =
-        text.lineSequence().firstOrNull { it.isNotBlank() }
-            ?.replace(Regex("""^[#\-\*\d\.\s]+"""), "")
-            ?.take(64)
-            ?.trim()
-            ?.ifBlank { null }
-            ?: "Untitled note"
+    private fun yamlScalar(value: String): String =
+        value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ").trim()
 
     private fun titleFromMarkdown(markdown: String): String? =
         markdown.lineSequence().firstOrNull { it.startsWith("# ") }?.removePrefix("# ")?.trim()
+
+    private fun uniqueInboxPath(title: String, existingPaths: Set<String>, proposedPaths: MutableSet<String>): String {
+        val base = slug(title)
+        var candidate = "inbox/$base.md"
+        var suffix = 2
+        while (candidate in existingPaths || candidate in proposedPaths) {
+            candidate = "inbox/$base-$suffix.md"
+            suffix++
+        }
+        proposedPaths += candidate
+        return candidate
+    }
 
     private fun slug(title: String): String {
         val normalized = Normalizer.normalize(title, Normalizer.Form.NFD)
