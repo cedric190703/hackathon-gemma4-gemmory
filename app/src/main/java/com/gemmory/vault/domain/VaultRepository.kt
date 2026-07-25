@@ -3,32 +3,18 @@ package com.gemmory.vault.domain
 import com.gemmory.inbox.domain.InboxEntry
 import kotlinx.coroutines.flow.Flow
 
-data class VaultNoteSummary(
+/** A complete, active Markdown file supplied to the local model for chat. */
+data class VaultFile(
     val noteId: String,
     val title: String,
     val path: String,
-    val tags: List<String>,
-    val aliases: List<String>,
-    val outgoingLinkCount: Int,
-    val backlinkCount: Int,
-)
-
-data class VaultReadableNote(
-    val note: VaultNote,
-    val outgoingLinks: List<VaultLink>,
-    val backlinks: List<VaultLink>,
+    val markdown: String,
 )
 
 data class VaultGeneratedAnswer(
     val content: String,
     val citationNoteIds: List<String>,
 )
-
-interface VaultAnswerTools {
-    suspend fun listNotes(limit: Int): List<VaultNoteSummary>
-    suspend fun searchNotes(query: String, limit: Int): List<VaultSearchResult>
-    suspend fun readNote(noteId: String): VaultReadableNote?
-}
 
 data class VaultProcessingInboxEntry(
     val id: String,
@@ -56,7 +42,7 @@ interface VaultAnswerGenerator {
      * Returns null when the local model is unavailable or declines to answer, so
      * callers can show a local-model failure message.
      */
-    suspend fun answer(question: String, tools: VaultAnswerTools): VaultGeneratedAnswer?
+    suspend fun answer(question: String, vaultFiles: List<VaultFile>): VaultGeneratedAnswer?
 }
 
 interface VaultNoteProcessor {
