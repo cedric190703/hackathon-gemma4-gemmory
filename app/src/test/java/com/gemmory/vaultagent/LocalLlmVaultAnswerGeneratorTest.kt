@@ -21,10 +21,12 @@ import org.junit.Test
 class LocalLlmVaultAnswerGeneratorTest {
 
     @Test
-    fun `puts matching files and links directly in the model prompt`() = runTest {
+    fun `lets the model search then read a relevant note before answering`() = runTest {
         val engine = FakeLlmEngine(
             tokenResponses = listOf(
-                listOf("The launch code is 1234 [[Launch Plan]]."),
+                listOf("{\"tool\":\"search_notes\",\"query\":\"launch code\"}"),
+                listOf("{\"tool\":\"read_note\",\"noteId\":\"note-1\"}"),
+                listOf("{\"final\":\"The launch code is 1234 [[Launch Plan]].\"}"),
             ),
         )
         val controller = EngineController(engine, this)
@@ -38,27 +40,26 @@ class LocalLlmVaultAnswerGeneratorTest {
         )
 
         assertEquals("The launch code is 1234 [[Launch Plan]].", answer?.content)
-        assertEquals(listOf("note-1", "note-2", "note-3"), answer?.citationNoteIds)
-        assertEquals(1, tools.listCallCount)
-        assertEquals(listOf("note-1", "note-2", "note-3"), tools.readNoteIds)
+        assertEquals(listOf("note-1"), answer?.citationNoteIds)
+        assertEquals(0, tools.listCallCount)
+        assertEquals(listOf("launch code"), tools.searchQueries)
+        assertEquals(listOf("note-1"), tools.readNoteIds)
         assertEquals(1, engine.resetCallCount)
         assertEquals(GenerationOptions.GroundedVaultAnswer, engine.lastResetOptions)
         assertEquals(
-            listOf(GenerationOptions.GroundedVaultAnswer),
+            List(3) { GenerationOptions.GroundedVaultAnswer },
             engine.optionsReceived,
         )
 
-        val prompt = engine.promptsReceived.single()
-        assertTrue(prompt.contains("<user-question>"))
-        assertTrue(prompt.contains("<vault-files>"))
-        assertTrue(prompt.contains("title: Launch Plan"))
-        assertTrue(prompt.contains("path: plans/launch.md"))
-        assertTrue(prompt.contains("Launch code: 1234"))
-        assertTrue(prompt.contains("outgoing-links: Checklist (file id: note-2, resolved)"))
-        assertTrue(prompt.contains("backlinks: Launch Plan (file id: note-3, resolved)"))
-        assertTrue(prompt.contains("# Checklist\n\nConfirm the launch code before release."))
-        assertTrue(prompt.contains("# Release review\n\nThe launch plan must be approved."))
-        assertTrue(!prompt.contains("TOOL:"))
+        assertEquals(3, engine.promptsReceived.size)
+        assertTrue(engine.promptsReceived[0].contains("Available commands:"))
+        assertTrue(engine.promptsReceived[0].contains("<user-question>"))
+        assertTrue(!engine.promptsReceived[0].contains("Launch code: 1234"))
+        assertTrue(engine.promptsReceived[1].contains("<tool-result name=\"search_notes\">"))
+        assertTrue(engine.promptsReceived[1].contains("id: note-1"))
+        assertTrue(engine.promptsReceived[2].contains("<tool-result name=\"read_note\">"))
+        assertTrue(engine.promptsReceived[2].contains("title: Launch Plan"))
+        assertTrue(engine.promptsReceived[2].contains("Launch code: 1234"))
     }
 
     @Test
@@ -78,10 +79,35 @@ class LocalLlmVaultAnswerGeneratorTest {
         assertTrue(tools.readNoteIds.isEmpty())
     }
 
+    @Test
+    fun `does not accept a final answer until the vault has been inspected`() = runTest {
+        val engine = FakeLlmEngine(
+            tokenResponses = listOf(
+                listOf("{\"final\":\"The launch code is 9999.\"}"),
+                listOf("{\"tool\":\"search_notes\",\"query\":\"launch code\"}"),
+                listOf("{\"tool\":\"read_note\",\"noteId\":\"note-1\"}"),
+                listOf("{\"final\":\"The launch code is 1234 [[Launch Plan]].\"}"),
+            ),
+        )
+        val tools = FakeVaultAnswerTools()
+        engine.initialize("/tmp/model.litertlm")
+
+        val answer = LocalLlmVaultAnswerGenerator(EngineController(engine, this)).answer(
+            question = "What is the launch code?",
+            tools = tools,
+        )
+
+        assertEquals("The launch code is 1234 [[Launch Plan]].", answer?.content)
+        assertEquals(listOf("launch code"), tools.searchQueries)
+        assertEquals(listOf("note-1"), tools.readNoteIds)
+        assertTrue(engine.promptsReceived[1].contains("<tool-error name=\"final\">"))
+    }
+
     private class FakeVaultAnswerTools : VaultAnswerTools {
         var listCallCount = 0
             private set
         val readNoteIds = mutableListOf<String>()
+        val searchQueries = mutableListOf<String>()
 
         override suspend fun listNotes(limit: Int): List<VaultNoteSummary> {
             listCallCount++
@@ -98,7 +124,18 @@ class LocalLlmVaultAnswerGeneratorTest {
             )
         }
 
-        override suspend fun searchNotes(query: String, limit: Int): List<VaultSearchResult> = emptyList()
+        override suspend fun searchNotes(query: String, limit: Int): List<VaultSearchResult> {
+            searchQueries += query
+            return listOf(
+                VaultSearchResult(
+                    noteId = "note-1",
+                    title = "Launch Plan",
+                    path = "plans/launch.md",
+                    snippet = "Launch code: 1234",
+                    score = 100,
+                ),
+            )
+        }
 
         override suspend fun readNote(noteId: String): VaultReadableNote? {
             readNoteIds += noteId
