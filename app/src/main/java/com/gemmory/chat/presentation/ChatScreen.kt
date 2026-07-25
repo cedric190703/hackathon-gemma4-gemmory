@@ -50,7 +50,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import com.gemmory.chat.domain.MessageStatus
 import com.gemmory.chat.presentation.components.ChatInputBar
 import com.gemmory.chat.presentation.components.ContextTrimmedNotice
-import com.gemmory.chat.presentation.components.DiagnosticsPanel
 import com.gemmory.chat.presentation.components.EmptyConversationHint
 import com.gemmory.chat.presentation.components.ErrorBannerCard
 import com.gemmory.chat.presentation.components.MessageBubble
@@ -151,7 +150,6 @@ fun ChatScreen(
             if (blocksWorkflow) {
                 ModelLoadingPanel(Modifier.weight(1f))
             } else if (state.showsChat) {
-                DiagnosticsPanel(state.diagnostics)
                 MessageList(
                     state = state,
                     streamingText = streamingText,
