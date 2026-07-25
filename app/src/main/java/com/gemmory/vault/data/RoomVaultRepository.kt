@@ -407,8 +407,15 @@ class RoomVaultRepository(
         val clean = query.trim()
         if (clean.isBlank()) return@withContext dao.recentNotes(limit).map { it.searchResult("", 1) }
         val exact = dao.notesByTitle(clean).map { it.id }
-        val ftsQuery = clean.split(Regex("""\s+""")).joinToString(" ") { "$it*" }
-        val fts = runCatching { dao.searchFtsIds(ftsQuery, limit * 3) }.getOrDefault(emptyList())
+        val ftsTokens = clean.split(Regex("""\s+"""))
+            .map { it.replace(Regex("""[^\p{L}\p{N}]"""), "") }
+            .filter { it.isNotBlank() }
+        val fts = if (ftsTokens.isEmpty()) {
+            emptyList()
+        } else {
+            val ftsQuery = ftsTokens.joinToString(" ") { "$it*" }
+            runCatching { dao.searchFtsIds(ftsQuery, limit * 3) }.getOrDefault(emptyList())
+        }
         val notes = dao.notesByIds((exact + fts).distinct()).associateBy { it.id }
         (exact + fts).distinct().mapNotNull { id ->
             notes[id]?.let { note ->
@@ -541,6 +548,7 @@ class RoomVaultRepository(
     }
 
     private suspend fun indexNote(entity: VaultNoteEntity, markdown: String) {
+        dao.deleteFts(entity.id)
         dao.upsertFts(
             VaultNoteFtsEntity(
                 noteId = entity.id,
