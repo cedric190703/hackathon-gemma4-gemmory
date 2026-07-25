@@ -18,5 +18,11 @@ data class GenerationOptions(
             topP = 0.7,
             seed = InferenceConfig.DEFAULT_SAMPLING.seed,
         )
+        val VaultNoteProcessing = GenerationOptions(
+            temperature = 0.25,
+            topK = 20,
+            topP = 0.8,
+            seed = InferenceConfig.DEFAULT_SAMPLING.seed,
+        )
     }
 }
