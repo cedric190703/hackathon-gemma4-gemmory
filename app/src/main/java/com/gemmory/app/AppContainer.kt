@@ -25,6 +25,10 @@ import com.gemmory.modelinstall.OkHttpModelDownloader
 import com.gemmory.privacy.NetworkAccessAuditor
 import com.gemmory.settings.DataStoreSettingsRepository
 import com.gemmory.settings.SettingsRepository
+import com.gemmory.vault.data.KnowledgeDatabase
+import com.gemmory.vault.data.RoomVaultRepository
+import com.gemmory.vault.domain.VaultRepository
+import com.gemmory.vault.storage.MarkdownVaultStorage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
@@ -87,6 +91,21 @@ class AppContainer(private val application: Application) {
         RoomChatRepository(database.conversationDao(), database.messageDao(), dispatchers)
     }
 
+    private val knowledgeDatabase: KnowledgeDatabase by lazy { KnowledgeDatabase.create(application) }
+
+    private val vaultStorage: MarkdownVaultStorage by lazy {
+        MarkdownVaultStorage(application.filesDir.resolve("vault"))
+    }
+
+    val vaultRepository: VaultRepository by lazy {
+        RoomVaultRepository(
+            database = knowledgeDatabase,
+            dao = knowledgeDatabase.knowledgeDao(),
+            storage = vaultStorage,
+            dispatchers = dispatchers,
+        )
+    }
+
     val contextPolicy: ContextPolicy by lazy {
         ContextPolicy(InferenceConfig.DEFAULT_CONTEXT_BUDGET_TOKENS)
     }
@@ -95,6 +114,7 @@ class AppContainer(private val application: Application) {
     fun warmUp() {
         appScope.launch {
             modelStorage.prepareDirectories()
+            vaultStorage.prepare()
             modelStorage.cleanupOrphanTempFiles(descriptor)
             chatRepository.repairUnfinishedMessages()
         }
