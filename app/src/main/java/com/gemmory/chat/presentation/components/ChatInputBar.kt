@@ -2,6 +2,8 @@ package com.gemmory.chat.presentation.components
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
@@ -18,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -38,7 +41,10 @@ fun ChatInputBar(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .imePadding(),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
         tonalElevation = 0.dp,
     ) {
@@ -62,7 +68,11 @@ fun ChatInputBar(
                     onClick = onStop,
                     modifier = Modifier.padding(start = 8.dp).size(52.dp).testTag(TAG_STOP_BUTTON),
                 ) {
-                    Icon(Icons.Filled.Stop, contentDescription = "Stop generating")
+                    Icon(
+                        Icons.Filled.Stop,
+                        contentDescription = "Stop generating",
+                        tint = Color.White,
+                    )
                 }
             } else {
                 FilledIconButton(
@@ -70,7 +80,11 @@ fun ChatInputBar(
                     enabled = enabled && value.isNotBlank(),
                     modifier = Modifier.padding(start = 8.dp).size(52.dp).testTag(TAG_SEND_BUTTON),
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send message")
+                    Icon(
+                        Icons.AutoMirrored.Filled.Send,
+                        contentDescription = "Send message",
+                        tint = Color.White,
+                    )
                 }
             }
         }
