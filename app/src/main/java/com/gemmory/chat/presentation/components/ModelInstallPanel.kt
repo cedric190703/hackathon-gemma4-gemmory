@@ -56,7 +56,11 @@ fun ModelInstallPanel(
         Spacer(Modifier.height(20.dp))
         when (state) {
             is ModelInstallState.NotInstalled -> {
-                Text(state.descriptor.displayName, style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    state.descriptor.displayName,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = "The model is about ${state.descriptor.sizeBytes.toGb()} GB. It is " +
@@ -100,7 +104,11 @@ fun ModelInstallPanel(
             )
 
             is ModelInstallState.Installed -> {
-                Text("Model installed", style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    "Model installed",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = "${state.descriptor.displayName} · ${state.sizeBytes.toGb()} GB",
@@ -124,7 +132,11 @@ fun ModelInstallPanel(
             }
 
             is ModelInstallState.Failed -> {
-                Text("Installation failed", style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    "Installation failed",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
                 Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onDownload, modifier = Modifier.testTag(TAG_DOWNLOAD_BUTTON)) {
@@ -146,7 +158,11 @@ private fun InstallProgress(
     fraction: Float?,
     onCancel: (() -> Unit)?,
 ) {
-    Text(title, style = MaterialTheme.typography.titleLarge)
+    Text(
+        title,
+        style = MaterialTheme.typography.titleLarge,
+        color = MaterialTheme.colorScheme.onSurface,
+    )
     Spacer(Modifier.height(16.dp))
     if (fraction != null) {
         LinearProgressIndicator(
