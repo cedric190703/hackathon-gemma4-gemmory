@@ -22,6 +22,7 @@ class FakeLlmEngine(
     private val failGenerationWith: InferenceError? = null,
     /** When true, generation emits [GenerationEvent.Cancelled] instead of completing. */
     private val simulateCancellation: Boolean = false,
+    private val tokenResponses: List<List<String>>? = null,
 ) : LocalLlmEngine {
 
     private val _diagnostics = MutableStateFlow(EngineDiagnostics(runtimeVersion = "fake"))
@@ -37,9 +38,12 @@ class FakeLlmEngine(
         private set
     var lastReplayedHistory: List<ConversationTurn> = emptyList()
         private set
+    var lastResetOptions: GenerationOptions = GenerationOptions.Default
+        private set
     var resetCallCount: Int = 0
         private set
     val promptsReceived: MutableList<String> = mutableListOf()
+    val optionsReceived: MutableList<GenerationOptions> = mutableListOf()
 
     override suspend fun initialize(modelPath: String) {
         initializeCallCount++
@@ -76,6 +80,7 @@ class FakeLlmEngine(
                 return@flow
             }
             promptsReceived += prompt
+            optionsReceived += options
             emit(GenerationEvent.Started)
 
             failGenerationWith?.let { error ->
@@ -83,7 +88,10 @@ class FakeLlmEngine(
                 return@flow
             }
 
-            for (token in tokens) {
+            val responseTokens = tokenResponses?.getOrNull(promptsReceived.lastIndex)
+                ?: tokenResponses?.lastOrNull()
+                ?: tokens
+            for (token in responseTokens) {
                 if (tokenDelayMs > 0) delay(tokenDelayMs)
                 emit(GenerationEvent.Token(token))
             }
@@ -107,9 +115,11 @@ class FakeLlmEngine(
     override suspend fun resetConversation(
         conversationId: String,
         history: List<ConversationTurn>,
+        options: GenerationOptions,
     ) {
         resetCallCount++
         lastReplayedHistory = history
+        lastResetOptions = options
     }
 
     override suspend fun close() {

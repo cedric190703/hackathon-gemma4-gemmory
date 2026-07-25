@@ -66,10 +66,12 @@ interface LocalLlmEngine {
      *
      * [history] is expected to already be trimmed to the context budget by
      * [com.gemmory.chat.domain.ContextPolicy].
+     * [options] are applied when the native conversation is created.
      */
     suspend fun resetConversation(
         conversationId: String,
         history: List<ConversationTurn> = emptyList(),
+        options: GenerationOptions = GenerationOptions.Default,
     )
 
     /** Releases all native resources. The instance is unusable afterwards. */
