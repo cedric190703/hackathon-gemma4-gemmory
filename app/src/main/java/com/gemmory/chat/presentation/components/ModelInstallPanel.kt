@@ -111,7 +111,11 @@ fun ModelInstallPanel(
                 if (isLoadingEngine) {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(8.dp))
-                    Text("Loading the model into memory…", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        text = "Loading the model into memory…",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 } else {
                     Button(onClick = onLoad) { Text("Load model") }
                 }
@@ -153,7 +157,11 @@ private fun InstallProgress(
         LinearProgressIndicator(modifier = Modifier.fillMaxWidth().testTag(TAG_DOWNLOAD_PROGRESS))
     }
     Spacer(Modifier.height(8.dp))
-    Text(detail, style = MaterialTheme.typography.bodyMedium)
+    Text(
+        text = detail,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
     if (onCancel != null) {
         Spacer(Modifier.height(16.dp))
         TextButton(onClick = onCancel) { Text("Cancel") }
