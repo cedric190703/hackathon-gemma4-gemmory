@@ -48,8 +48,6 @@ class ChatViewModel(
     private val contextPolicy: ContextPolicy,
 ) : ViewModel() {
 
-    private val engine = engineController.engine
-
     private val conversationId = MutableStateFlow<String?>(null)
     private val droppedContext = MutableStateFlow(0)
     private val banner = MutableStateFlow<ErrorBanner?>(null)
@@ -72,15 +70,12 @@ class ChatViewModel(
 
     private var generationJob: Job? = null
 
-    /** Conversation id whose history has already been replayed into the engine. */
-    private var preparedConversationId: String? = null
-
     private val messagesFlow = conversationId.flatMapLatest { id ->
         if (id == null) flowOf(emptyList()) else repository.observeMessages(id)
     }
 
     val uiState: StateFlow<ChatUiState> = combine(
-        combine(installer.state, engine.diagnostics, generating, ::Triple),
+        combine(installer.state, engineController.engine.diagnostics, generating, ::Triple),
         combine(messagesFlow, repository.observeSessions(), conversationId, ::Triple),
         combine(banner, droppedContext, streamingMessageId, ::Triple),
     ) { engineTriple, chatTriple, uiTriple ->
@@ -178,7 +173,7 @@ class ChatViewModel(
         var lastCheckpoint = System.currentTimeMillis()
         var finished = false
 
-        engine.generate(conversationId, prompt, GenerationOptions.Default).collect { event ->
+        engineController.generate(conversationId, prompt, GenerationOptions.Default).collect { event ->
             when (event) {
                 GenerationEvent.Started -> Unit
 
@@ -232,7 +227,7 @@ class ChatViewModel(
                         status = MessageStatus.FAILED,
                         errorText = ErrorPresentation.shortLabel(event.error),
                     )
-                    if (event.error.isFatalForSession) preparedConversationId = null
+                    if (event.error.isFatalForSession) engineController.invalidatePreparedConversation(conversationId)
                 }
             }
         }
@@ -255,7 +250,7 @@ class ChatViewModel(
 
     fun stop() {
         viewModelScope.launch {
-            engine.cancel()
+            engineController.cancel()
             generationJob?.cancel()
         }
     }
@@ -263,14 +258,12 @@ class ChatViewModel(
     fun newConversation() {
         viewModelScope.launch {
             generationJob?.cancel()
-            engine.cancel()
+            engineController.cancel()
             val session = repository.createSession()
             conversationId.value = session.id
             droppedContext.value = 0
             banner.value = null
-            preparedConversationId = null
-            engine.resetConversation(session.id, emptyList())
-            preparedConversationId = session.id
+            engineController.resetConversation(session.id, emptyList())
         }
     }
 
@@ -278,9 +271,9 @@ class ChatViewModel(
         if (conversationId.value == id) return
         viewModelScope.launch {
             generationJob?.cancel()
-            engine.cancel()
+            engineController.cancel()
             conversationId.value = id
-            preparedConversationId = null
+            engineController.invalidatePreparedConversation()
             banner.value = null
         }
     }
@@ -289,7 +282,7 @@ class ChatViewModel(
         viewModelScope.launch {
             repository.deleteSession(id)
             if (conversationId.value == id) {
-                preparedConversationId = null
+                engineController.invalidatePreparedConversation(id)
                 openMostRecentOrNew()
             }
         }
@@ -309,7 +302,7 @@ class ChatViewModel(
         viewModelScope.launch {
             repository.updateMessageContent(messageConversationId, messageId, clean)
             if (conversationId.value == messageConversationId) {
-                preparedConversationId = null
+                engineController.invalidatePreparedConversation(messageConversationId)
             }
         }
     }
@@ -318,7 +311,7 @@ class ChatViewModel(
         viewModelScope.launch {
             repository.deleteMessage(messageConversationId, messageId)
             if (conversationId.value == messageConversationId) {
-                preparedConversationId = null
+                engineController.invalidatePreparedConversation(messageConversationId)
             }
         }
     }
@@ -347,7 +340,6 @@ class ChatViewModel(
         viewModelScope.launch {
             generationJob?.cancel()
             engineController.unload()
-            preparedConversationId = null
             installer.remove()
         }
     }
@@ -383,7 +375,6 @@ class ChatViewModel(
         if (state !is ModelInstallState.Installed) return
         viewModelScope.launch {
             generationJob?.cancel()
-            preparedConversationId = null
             engineController.unload()
             engineController.retry(state.path)
         }
@@ -411,22 +402,18 @@ class ChatViewModel(
     private suspend fun openMostRecentOrNew() {
         val existing = repository.mostRecentSessionId()
         conversationId.value = existing ?: repository.createSession().id
-        preparedConversationId = null
+        engineController.invalidatePreparedConversation()
     }
 
-    /**
-     * Rebuilds the native conversation from persisted history the first time a
-     * chat is used after opening it or after the engine was reloaded.
-     */
+    /** Rebuilds the native conversation when this chat is not already active. */
     private suspend fun prepareEngineConversation(id: String, excludeMessageId: String?) {
-        if (preparedConversationId == id) return
+        if (engineController.isConversationPrepared(id)) return
         val history: List<ChatMessage> = repository.listMessages(id)
             .filter { it.id != excludeMessageId }
             .dropLastWhile { it.role == MessageRole.USER && it.status == MessageStatus.COMPLETE }
         val bounded = contextPolicy.bound(history)
         droppedContext.value = bounded.droppedMessageCount
-        engine.resetConversation(id, bounded.turns)
-        preparedConversationId = id
+        engineController.resetConversation(id, bounded.turns)
         AppLog.d(TAG, "conversation prepared turns=${bounded.turns.size} dropped=${bounded.droppedMessageCount}")
     }
 

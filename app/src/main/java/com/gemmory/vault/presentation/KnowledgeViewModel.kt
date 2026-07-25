@@ -9,6 +9,7 @@ import com.gemmory.vault.domain.VaultEntry
 import com.gemmory.vault.domain.VaultNote
 import com.gemmory.vault.domain.VaultRepository
 import com.gemmory.vault.domain.VaultSearchResult
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -154,9 +155,16 @@ class KnowledgeViewModel(
         viewModelScope.launch {
             askMessages.value += AskMessage(UUID.randomUUID().toString(), "USER", question)
             busy.value = true
-            val answer = repository.answerVaultQuestion(conversationId, question)
-            askMessages.value += AskMessage(UUID.randomUUID().toString(), "ASSISTANT", answer)
-            busy.value = false
+            try {
+                val answer = repository.answerVaultQuestion(conversationId, question)
+                askMessages.value += AskMessage(UUID.randomUUID().toString(), "ASSISTANT", answer)
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (t: Throwable) {
+                banner.value = t.message ?: "Unable to answer from vault"
+            } finally {
+                busy.value = false
+            }
         }
     }
 
