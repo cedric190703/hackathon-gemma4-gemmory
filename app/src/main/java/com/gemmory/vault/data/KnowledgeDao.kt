@@ -86,7 +86,7 @@ interface KnowledgeDao {
     fun observeOutgoingLinks(noteId: String): Flow<List<VaultLinkEntity>>
 
     @Query("SELECT * FROM vault_links ORDER BY source_note_id ASC, start_offset ASC")
-    fun observeAllLinks(): Flow<List<VaultLinkEntity>>
+    fun observeLinks(): Flow<List<VaultLinkEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRevision(revision: VaultRevisionEntity)

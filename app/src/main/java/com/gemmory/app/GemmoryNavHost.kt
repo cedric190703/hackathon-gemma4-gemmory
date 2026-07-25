@@ -67,7 +67,7 @@ fun GemmoryNavHost(viewModel: ChatViewModel, knowledgeViewModel: KnowledgeViewMo
                     inputValue = input,
                     streamingText = streamingText,
                     onInputChange = viewModel::onInputChange,
-                    onSend = viewModel::send,
+                    onSend = viewModel::sendVaultQuestion,
                     onStop = viewModel::stop,
                     onNewConversation = viewModel::newConversation,
                     onOpenSessions = { navController.navigate(Routes.CONVERSATIONS) },

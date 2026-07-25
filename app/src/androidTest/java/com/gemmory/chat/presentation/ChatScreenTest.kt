@@ -26,6 +26,7 @@ import com.gemmory.modelinstall.ModelInstallState
 import com.gemmory.testing.FakeChatRepository
 import com.gemmory.testing.FakeModelInstaller
 import com.gemmory.testing.FakeSettingsRepository
+import com.gemmory.testing.FakeVaultRepository
 import com.gemmory.ui.theme.GemmoryTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,8 +45,10 @@ class ChatScreenTest {
         engine: FakeLlmEngine = FakeLlmEngine(),
         installer: FakeModelInstaller = FakeModelInstaller(),
         repository: FakeChatRepository = FakeChatRepository(),
+        vaultRepository: FakeVaultRepository = FakeVaultRepository(),
     ) = ChatViewModel(
         repository = repository,
+        vaultRepository = vaultRepository,
         installer = installer,
         engineController = EngineController(engine, scope),
         settingsRepository = FakeSettingsRepository(),
@@ -63,10 +66,13 @@ class ChatScreenTest {
                 inputValue = input,
                 streamingText = streaming,
                 onInputChange = viewModel::onInputChange,
-                onSend = viewModel::send,
+                onSend = viewModel::sendVaultQuestion,
                 onStop = viewModel::stop,
                 onNewConversation = viewModel::newConversation,
                 onOpenSessions = {},
+                onOpenInbox = {},
+                onOpenVault = {},
+                onOpenAsk = {},
                 onOpenSettings = {},
                 onDownloadModel = { viewModel.downloadModel() },
                 onImportModel = {},
@@ -115,8 +121,10 @@ class ChatScreenTest {
     }
 
     @Test
-    fun sendingAMessageStreamsTheResponse() {
-        val viewModel = viewModel(engine = FakeLlmEngine(listOf("Bonjour", " le", " monde")))
+    fun sendingAMessageShowsTheVaultResponse() {
+        val viewModel = viewModel(
+            vaultRepository = FakeVaultRepository { _, question -> "Vault answer for $question" },
+        )
         composeRule.setContent { Host(viewModel) }
         composeRule.waitUntil(5_000) { viewModel.uiState.value.canSendPrompt }
 
@@ -124,14 +132,14 @@ class ChatScreenTest {
         composeRule.onNodeWithTag(TAG_SEND_BUTTON).performClick()
 
         composeRule.waitUntil(5_000) {
-            composeRule.onAllNodesWithTextSafe("Bonjour le monde")
+            composeRule.onAllNodesWithTextSafe("Vault answer for salut")
         }
         composeRule.onNodeWithText("salut").assertIsDisplayed()
     }
 
     @Test
     fun theStopButtonReplacesSendWhileGenerating() {
-        val viewModel = viewModel(engine = FakeLlmEngine(tokenDelayMs = 400))
+        val viewModel = viewModel(vaultRepository = FakeVaultRepository(answerDelayMs = 400))
         composeRule.setContent { Host(viewModel) }
         composeRule.waitUntil(5_000) { viewModel.uiState.value.canSendPrompt }
 
@@ -165,7 +173,7 @@ class ChatScreenTest {
 
     @Test
     fun startingANewConversationClearsTheHistory() {
-        val viewModel = viewModel(engine = FakeLlmEngine(listOf("answer")))
+        val viewModel = viewModel()
         composeRule.setContent { Host(viewModel) }
         composeRule.waitUntil(5_000) { viewModel.uiState.value.canSendPrompt }
 

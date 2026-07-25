@@ -6,13 +6,13 @@ import androidx.lifecycle.viewModelScope
 import com.gemmory.inbox.domain.InboxEntry
 import com.gemmory.vault.domain.ProposedVaultChangeSet
 import com.gemmory.vault.domain.VaultEntry
+import com.gemmory.vault.domain.VaultGraph
 import com.gemmory.vault.domain.VaultNote
 import com.gemmory.vault.domain.VaultRepository
 import com.gemmory.vault.domain.VaultSearchResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -21,6 +21,7 @@ import java.util.UUID
 data class KnowledgeUiState(
     val inbox: List<InboxEntry> = emptyList(),
     val notes: List<VaultEntry> = emptyList(),
+    val graph: VaultGraph = VaultGraph(),
     val selectedNote: VaultNote? = null,
     val searchQuery: String = "",
     val searchResults: List<VaultSearchResult> = emptyList(),
@@ -53,17 +54,19 @@ class KnowledgeViewModel(
 
     private val inbox = repository.observeInbox()
     private val notes = repository.observeNotes()
+    private val graph = repository.observeGraph()
 
     val uiState: StateFlow<KnowledgeUiState> = combine(
-        combine(inbox, notes, selectedNote, ::Triple),
+        combine(inbox, notes, graph, selectedNote, ::VaultSnapshot),
         combine(searchQuery, searchResults, selectedInboxIds, ::Triple),
         combine(pendingChangeSet, askMessages, busy, ::Triple),
         banner,
     ) { first, second, third, message ->
         KnowledgeUiState(
-            inbox = first.first,
-            notes = first.second,
-            selectedNote = first.third,
+            inbox = first.inbox,
+            notes = first.notes,
+            graph = first.graph,
+            selectedNote = first.selectedNote,
             searchQuery = second.first,
             searchResults = second.second,
             selectedInboxIds = second.third,
@@ -154,8 +157,11 @@ class KnowledgeViewModel(
         viewModelScope.launch {
             askMessages.value += AskMessage(UUID.randomUUID().toString(), "USER", question)
             busy.value = true
-            val answer = repository.answerVaultQuestion(conversationId, question)
-            askMessages.value += AskMessage(UUID.randomUUID().toString(), "ASSISTANT", answer)
+            runCatching { repository.answerVaultQuestion(conversationId, question) }
+                .onSuccess { answer ->
+                    askMessages.value += AskMessage(UUID.randomUUID().toString(), "ASSISTANT", answer)
+                }
+                .onFailure { banner.value = it.message ?: "Unable to answer from the vault" }
             busy.value = false
         }
     }
@@ -172,3 +178,10 @@ class KnowledgeViewModel(
         }
     }
 }
+
+private data class VaultSnapshot(
+    val inbox: List<InboxEntry>,
+    val notes: List<VaultEntry>,
+    val graph: VaultGraph,
+    val selectedNote: VaultNote?,
+)

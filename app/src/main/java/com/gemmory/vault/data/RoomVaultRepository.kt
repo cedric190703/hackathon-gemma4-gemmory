@@ -17,6 +17,9 @@ import com.gemmory.vault.domain.LinkResolutionStatus
 import com.gemmory.vault.domain.ProposedVaultChangeSet
 import com.gemmory.vault.domain.UndoResult
 import com.gemmory.vault.domain.VaultEntry
+import com.gemmory.vault.domain.VaultGraph
+import com.gemmory.vault.domain.VaultGraphEdge
+import com.gemmory.vault.domain.VaultGraphNode
 import com.gemmory.vault.domain.VaultLink
 import com.gemmory.vault.domain.VaultNote
 import com.gemmory.vault.domain.VaultOperation
@@ -27,6 +30,7 @@ import com.gemmory.vault.parser.MarkdownFrontmatterParser
 import com.gemmory.vault.parser.WikiLinkParser
 import com.gemmory.vault.storage.MarkdownVaultStorage
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.security.MessageDigest
@@ -49,7 +53,12 @@ class RoomVaultRepository(
         }
 
     override fun observeAllLinks(): Flow<List<VaultLink>> =
-        dao.observeAllLinks().map { links -> links.map { it.toDomain() } }
+        dao.observeLinks().map { links -> links.map { it.toDomain() } }
+
+    override fun observeGraph(): Flow<VaultGraph> =
+        dao.observeNotes().combine(dao.observeLinks()) { notes, links ->
+            buildGraph(notes, links)
+        }
 
     override fun observeBacklinks(noteId: String): Flow<List<VaultLink>> =
         dao.observeBacklinks(noteId).map { links -> links.map { it.toDomain() } }
@@ -332,7 +341,7 @@ class RoomVaultRepository(
             )
         }
 
-        rebuildLinksFor(affected.distinct())
+        rebuildAllLinks()
         ApplyResult(changeSet.id, affected.distinct())
     }
 
@@ -365,7 +374,7 @@ class RoomVaultRepository(
                 }
             dao.markChangeSetUndone(changeSet.id, System.currentTimeMillis())
         }
-        rebuildLinksFor(restored)
+        rebuildAllLinks()
         UndoResult(changeSet.id, restored)
     }
 
@@ -491,6 +500,58 @@ class RoomVaultRepository(
             indexNote(note, storage.read(note.path).orEmpty())
         }
     }
+
+    private suspend fun rebuildAllLinks() {
+        rebuildLinksFor(dao.allActiveNotes().map { it.id })
+    }
+
+    private fun buildGraph(notes: List<VaultNoteEntity>, links: List<VaultLinkEntity>): VaultGraph {
+        val activeIds = notes.map { it.id }.toSet()
+        val resolvedLinks = links.filter { link ->
+            link.status == LinkResolutionStatus.RESOLVED.name &&
+                link.sourceNoteId in activeIds &&
+                link.targetNoteId?.let { it in activeIds } == true
+        }
+        val degreeById = activeIds.associateWith { 0 }.toMutableMap()
+        resolvedLinks.forEach { link ->
+            degreeById[link.sourceNoteId] = degreeById.getValue(link.sourceNoteId) + 1
+            link.targetNoteId?.let { target ->
+                degreeById[target] = degreeById.getValue(target) + 1
+            }
+        }
+        val nodes = notes
+            .sortedBy { it.title.lowercase() }
+            .map { note ->
+                VaultGraphNode(
+                    noteId = note.id,
+                    title = note.title,
+                    path = note.path,
+                    cluster = graphCluster(note),
+                    degree = degreeById[note.id] ?: 0,
+                )
+            }
+        val edges = resolvedLinks.mapNotNull { link ->
+            val target = link.targetNoteId ?: return@mapNotNull null
+            VaultGraphEdge(
+                id = link.id,
+                sourceNoteId = link.sourceNoteId,
+                targetNoteId = target,
+                label = link.label ?: link.rawTarget,
+            )
+        }
+        return VaultGraph(
+            nodes = nodes,
+            edges = edges,
+            unresolvedLinkCount = links.count { link ->
+                link.sourceNoteId in activeIds && link.status != LinkResolutionStatus.RESOLVED.name
+            },
+        )
+    }
+
+    private fun graphCluster(note: VaultNoteEntity): String =
+        split(note.tags).firstOrNull()?.let { "#$it" }
+            ?: note.path.substringBefore('/').takeIf { it != note.path }
+            ?: "Vault"
 
     private suspend fun resolveLinks(sourceNoteId: String, markdown: String): List<VaultLinkEntity> {
         val notes = dao.allActiveNotes()

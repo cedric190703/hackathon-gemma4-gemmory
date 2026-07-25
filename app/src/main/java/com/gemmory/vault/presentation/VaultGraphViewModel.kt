@@ -11,17 +11,17 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
 data class VaultGraphUiState(
-    val nodes: List<VaultGraphNode> = emptyList(),
-    val edges: List<VaultGraphEdge> = emptyList(),
+    val nodes: List<VaultGraphWindowNode> = emptyList(),
+    val edges: List<VaultGraphWindowEdge> = emptyList(),
 )
 
-data class VaultGraphNode(
+data class VaultGraphWindowNode(
     val id: String,
     val title: String,
     val path: String,
 )
 
-data class VaultGraphEdge(
+data class VaultGraphWindowEdge(
     val sourceNoteId: String,
     val targetNoteId: String?,
     val targetLabel: String,
@@ -39,7 +39,7 @@ class VaultGraphViewModel(
         val activeNoteIds = notes.mapTo(mutableSetOf()) { it.noteId }
         VaultGraphUiState(
             nodes = notes.map { note ->
-                VaultGraphNode(
+                VaultGraphWindowNode(
                     id = note.noteId,
                     title = note.title,
                     path = note.path,
@@ -48,7 +48,7 @@ class VaultGraphViewModel(
             edges = links
                 .filter { link -> link.sourceNoteId in activeNoteIds }
                 .map { link ->
-                    VaultGraphEdge(
+                    VaultGraphWindowEdge(
                         sourceNoteId = link.sourceNoteId,
                         targetNoteId = link.targetNoteId?.takeIf { it in activeNoteIds },
                         targetLabel = link.label ?: link.rawTarget,

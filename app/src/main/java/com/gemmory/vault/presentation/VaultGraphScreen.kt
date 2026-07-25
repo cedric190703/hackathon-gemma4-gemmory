@@ -118,8 +118,8 @@ fun VaultGraphScreen(
 
 @Composable
 private fun UnresolvedLinksList(
-    edges: List<VaultGraphEdge>,
-    nodesById: Map<String, VaultGraphNode>,
+    edges: List<VaultGraphWindowEdge>,
+    nodesById: Map<String, VaultGraphWindowNode>,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
