@@ -49,7 +49,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -490,38 +489,45 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawGraphLinks(
             moveTo(start.x, start.y)
             quadraticTo(control.x, control.y, end.x, end.y)
         }
-        val alpha = if (dimmed) 0.10f else if (highlighted) 0.96f else 0.50f
-        val linkColor = if (highlighted) colorScheme.primary else blend(sourceColor, targetColor, 0.48f)
+        val baseLinkColor = blend(sourceColor, targetColor, 0.48f)
+        val linkColor = if (highlighted) colorScheme.primary else blend(baseLinkColor, colorScheme.onSurface, 0.18f)
+        val alpha = if (dimmed) 0.16f else if (highlighted) 0.98f else 0.72f
+        val linkWidth = if (highlighted) 4.2f else 2.8f
 
         if (highlighted) {
             drawPath(
                 path = path,
-                color = colorScheme.primary.copy(alpha = 0.20f),
-                style = Stroke(width = 13f, cap = StrokeCap.Round),
+                color = colorScheme.primary.copy(alpha = 0.26f),
+                style = Stroke(width = 15f, cap = StrokeCap.Round),
             )
             drawPath(
                 path = path,
-                color = colorScheme.secondary.copy(alpha = 0.22f),
-                style = Stroke(width = 7f, cap = StrokeCap.Round),
+                color = colorScheme.secondary.copy(alpha = 0.26f),
+                style = Stroke(width = 8f, cap = StrokeCap.Round),
             )
         }
         drawPath(
             path = path,
-            color = Color.Black.copy(alpha = if (dimmed) 0.04f else 0.24f),
-            style = Stroke(width = if (highlighted) 5.5f else 3.5f, cap = StrokeCap.Round),
+            color = colorScheme.onSurface.copy(alpha = if (dimmed) 0.04f else 0.16f),
+            style = Stroke(width = if (highlighted) 7.2f else 4.6f, cap = StrokeCap.Round),
+        )
+        drawPath(
+            path = path,
+            color = colorScheme.surface.copy(alpha = if (dimmed) 0.03f else 0.34f),
+            style = Stroke(width = if (highlighted) 5.8f else 3.7f, cap = StrokeCap.Round),
         )
         drawPath(
             path = path,
             color = linkColor,
             alpha = alpha,
-            style = Stroke(width = if (highlighted) 3.4f else 2.1f, cap = StrokeCap.Round),
+            style = Stroke(width = linkWidth, cap = StrokeCap.Round),
         )
         drawArrowHead(
             tip = end,
             control = control,
             color = linkColor,
-            alpha = if (dimmed) 0.08f else if (highlighted) 0.92f else 0.42f,
-            size = if (highlighted) 10.5f else 8f,
+            alpha = if (dimmed) 0.14f else if (highlighted) 0.94f else 0.70f,
+            size = if (highlighted) 12f else 9.5f,
         )
 
         if (highlighted && edge.targetLabel.isNotBlank() && distance > 112f) {
@@ -577,7 +583,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawClusterFields(
     pan: Offset,
 ) {
     val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.White.copy(alpha = 0.58f).toArgb()
+        color = Color.White.copy(alpha = 0.76f).toArgb()
         textSize = 10.dp.toPx()
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     }
@@ -585,17 +591,36 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawClusterFields(
         val radius = layout.clusterRadius(cluster) * scale
         val transformedCenter = center.transformed(scale, pan)
         val clusterColor = colors[layout.clusterPrimaryKey(cluster)] ?: Color.White
-        drawCircle(clusterColor.copy(alpha = 0.075f), radius * 1.12f, transformedCenter)
-        drawCircle(clusterColor.copy(alpha = 0.12f), radius * 0.82f, transformedCenter)
+        drawCircle(clusterColor.copy(alpha = 0.055f), radius * 1.22f, transformedCenter)
+        drawCircle(clusterColor.copy(alpha = 0.105f), radius * 0.94f, transformedCenter)
         drawCircle(
-            color = clusterColor.copy(alpha = 0.36f),
+            color = clusterColor.copy(alpha = 0.18f),
+            radius = radius * 0.98f,
+            center = transformedCenter,
+            style = Stroke(width = 7f),
+        )
+        drawCircle(
+            color = blend(clusterColor, Color.White, 0.24f).copy(alpha = 0.46f),
             radius = radius,
             center = transformedCenter,
-            style = Stroke(width = 1.4f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(13f, 18f))),
+            style = Stroke(width = 1.6f),
         )
         layout.clusterLabels[cluster]?.takeIf { scale > 0.62f }?.let { label ->
             drawIntoCanvas { canvas ->
-                canvas.nativeCanvas.drawText(label.compactLabel(22), transformedCenter.x - radius + 18f, transformedCenter.y - radius + 24f, labelPaint)
+                val cleanLabel = label.compactLabel(22)
+                val labelWidth = labelPaint.measureText(cleanLabel)
+                val labelX = transformedCenter.x - radius + 20f
+                val labelY = transformedCenter.y - radius + 25f
+                val labelBackgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = blend(clusterColor, Color.White, 0.12f).copy(alpha = 0.24f).toArgb()
+                }
+                canvas.nativeCanvas.drawRoundRect(
+                    RectF(labelX - 9f, labelY - 17f, labelX + labelWidth + 9f, labelY + 7f),
+                    12f,
+                    12f,
+                    labelBackgroundPaint,
+                )
+                canvas.nativeCanvas.drawText(cleanLabel, labelX, labelY, labelPaint)
             }
         }
     }
