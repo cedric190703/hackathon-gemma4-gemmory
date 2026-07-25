@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
@@ -243,17 +244,6 @@ private fun ChatBottomBar(
                     Icon(
                         Icons.Filled.Folder,
                         contentDescription = "Vault",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-                IconButton(
-                    onClick = onOpenAsk,
-                    enabled = !blocksWorkflow,
-                    modifier = Modifier.size(52.dp),
-                ) {
-                    Icon(
-                        Icons.Filled.Search,
-                        contentDescription = "Ask Vault",
                         tint = MaterialTheme.colorScheme.onSurface,
                     )
                 }

@@ -19,6 +19,7 @@ data class VaultGraphWindowNode(
     val id: String,
     val title: String,
     val path: String,
+    val degree: Int,
 )
 
 data class VaultGraphWindowEdge(
@@ -37,12 +38,21 @@ class VaultGraphViewModel(
         repository.observeAllLinks(),
     ) { notes, links ->
         val activeNoteIds = notes.mapTo(mutableSetOf()) { it.noteId }
+        val activeLinks = links.filter { link ->
+            link.status == LinkResolutionStatus.RESOLVED &&
+                link.sourceNoteId in activeNoteIds &&
+                link.targetNoteId in activeNoteIds
+        }
+        val degrees = activeLinks.flatMap { listOf(it.sourceNoteId, it.targetNoteId) }
+            .groupingBy { it }
+            .eachCount()
         VaultGraphUiState(
             nodes = notes.map { note ->
                 VaultGraphWindowNode(
                     id = note.noteId,
                     title = note.title,
                     path = note.path,
+                    degree = degrees[note.noteId] ?: 0,
                 )
             },
             edges = links
