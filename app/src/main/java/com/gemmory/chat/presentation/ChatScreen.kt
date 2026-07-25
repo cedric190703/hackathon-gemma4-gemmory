@@ -18,7 +18,6 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -69,7 +68,6 @@ fun ChatScreen(
     onOpenSessions: () -> Unit,
     onOpenInbox: () -> Unit,
     onOpenVault: () -> Unit,
-    onOpenAsk: () -> Unit,
     onOpenSettings: () -> Unit,
     onDownloadModel: () -> Unit,
     onImportModel: () -> Unit,
@@ -92,7 +90,7 @@ fun ChatScreen(
                 title = {
                     Column {
                         Text(
-                            text = state.title.ifBlank { "Ask Vault" },
+                            text = state.title.ifBlank { "New conversation" },
                             maxLines = 1,
                             style = MaterialTheme.typography.titleMedium,
                         )
@@ -123,13 +121,12 @@ fun ChatScreen(
                 placeholder = when (state.topLevelState) {
                     TopLevelState.MODEL_LOADING -> "Loading the model…"
                     TopLevelState.GENERATING -> "Generating…"
-                    else -> "Add a note or ask your vault"
+                    else -> "Message Gemmory"
                 },
                 blocksWorkflow = blocksWorkflow,
                 onOpenSessions = onOpenSessions,
                 onOpenInbox = onOpenInbox,
                 onOpenVault = onOpenVault,
-                onOpenAsk = onOpenAsk,
                 onNewConversation = onNewConversation,
                 onOpenSettings = onOpenSettings,
             )
@@ -187,7 +184,6 @@ private fun ChatBottomBar(
     onOpenSessions: () -> Unit,
     onOpenInbox: () -> Unit,
     onOpenVault: () -> Unit,
-    onOpenAsk: () -> Unit,
     onNewConversation: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
@@ -223,9 +219,6 @@ private fun ChatBottomBar(
                 }
                 IconButton(onClick = onOpenVault) {
                     Icon(Icons.Filled.Folder, contentDescription = "Vault")
-                }
-                IconButton(onClick = onOpenAsk) {
-                    Icon(Icons.Filled.Search, contentDescription = "Ask Vault")
                 }
                 IconButton(
                     onClick = onNewConversation,
