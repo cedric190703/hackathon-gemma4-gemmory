@@ -184,20 +184,28 @@ fun ChatScreen(
 
 @Composable
 private fun ModelLoadingPanel(modifier: Modifier = Modifier) {
-    Surface(modifier = modifier.fillMaxWidth()) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground,
+    ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(Modifier.weight(1f))
-            Text("Loading Gemma 4 E2B", style = MaterialTheme.typography.headlineSmall)
+            Text(
+                text = "Loading Gemma 4 E2B",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
             Spacer(Modifier.height(16.dp))
             LinearProgressIndicator(Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
             Text(
                 text = "The vault unlocks when the local model is ready.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onBackground,
             )
             Spacer(Modifier.weight(1f))
         }
