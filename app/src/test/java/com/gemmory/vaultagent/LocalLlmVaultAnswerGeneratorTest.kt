@@ -21,12 +21,10 @@ import org.junit.Test
 class LocalLlmVaultAnswerGeneratorTest {
 
     @Test
-    fun `lets the model list notes read a note and answer from tool results`() = runTest {
+    fun `puts matching files and links directly in the model prompt`() = runTest {
         val engine = FakeLlmEngine(
             tokenResponses = listOf(
-                listOf("TOOL: LIST_NOTES limit=20"),
-                listOf("TOOL: READ_NOTE id=\"note-1\""),
-                listOf("FINAL: The launch code is 1234 [[Launch Plan]]."),
+                listOf("The launch code is 1234 [[Launch Plan]]."),
             ),
         )
         val controller = EngineController(engine, this)
@@ -40,38 +38,27 @@ class LocalLlmVaultAnswerGeneratorTest {
         )
 
         assertEquals("The launch code is 1234 [[Launch Plan]].", answer?.content)
-        assertEquals(listOf("note-1"), answer?.citationNoteIds)
+        assertEquals(listOf("note-1", "note-2", "note-3"), answer?.citationNoteIds)
         assertEquals(1, tools.listCallCount)
-        assertEquals(listOf("note-1"), tools.readNoteIds)
+        assertEquals(listOf("note-1", "note-2", "note-3"), tools.readNoteIds)
         assertEquals(1, engine.resetCallCount)
         assertEquals(GenerationOptions.GroundedVaultAnswer, engine.lastResetOptions)
         assertEquals(
-            listOf(
-                GenerationOptions.GroundedVaultAnswer,
-                GenerationOptions.GroundedVaultAnswer,
-                GenerationOptions.GroundedVaultAnswer,
-            ),
+            listOf(GenerationOptions.GroundedVaultAnswer),
             engine.optionsReceived,
         )
 
-        val initialPrompt = engine.promptsReceived[0]
-        assertTrue(initialPrompt.contains("MODE: VAULT_TOOL_AGENT"))
-        assertTrue(initialPrompt.contains("TOOL: LIST_NOTES"))
-        assertTrue(initialPrompt.contains("TOOL: READ_NOTE"))
-        assertTrue(initialPrompt.contains("READ_NOTE returns markdown plus outgoing links and backlinks"))
-
-        val listResultPrompt = engine.promptsReceived[1]
-        assertTrue(listResultPrompt.contains("TOOL_RESULT:"))
-        assertTrue(listResultPrompt.contains("id=note-1"))
-        assertTrue(listResultPrompt.contains("title=\"Launch Plan\""))
-
-        val readResultPrompt = engine.promptsReceived[2]
-        assertTrue(readResultPrompt.contains("MARKDOWN:"))
-        assertTrue(readResultPrompt.contains("Launch code: 1234"))
-        assertTrue(readResultPrompt.contains("OUTGOING_LINKS:"))
-        assertTrue(readResultPrompt.contains("targetId=note-2"))
-        assertTrue(readResultPrompt.contains("BACKLINKS:"))
-        assertTrue(readResultPrompt.contains("sourceId=note-3"))
+        val prompt = engine.promptsReceived.single()
+        assertTrue(prompt.contains("<user-question>"))
+        assertTrue(prompt.contains("<vault-files>"))
+        assertTrue(prompt.contains("title: Launch Plan"))
+        assertTrue(prompt.contains("path: plans/launch.md"))
+        assertTrue(prompt.contains("Launch code: 1234"))
+        assertTrue(prompt.contains("outgoing-links: Checklist (file id: note-2, resolved)"))
+        assertTrue(prompt.contains("backlinks: Launch Plan (file id: note-3, resolved)"))
+        assertTrue(prompt.contains("# Checklist\n\nConfirm the launch code before release."))
+        assertTrue(prompt.contains("# Release review\n\nThe launch plan must be approved."))
+        assertTrue(!prompt.contains("TOOL:"))
     }
 
     @Test
@@ -115,43 +102,61 @@ class LocalLlmVaultAnswerGeneratorTest {
 
         override suspend fun readNote(noteId: String): VaultReadableNote? {
             readNoteIds += noteId
-            if (noteId != "note-1") return null
-            return VaultReadableNote(
-                note = VaultNote(
-                    id = "note-1",
-                    path = "plans/launch.md",
-                    title = "Launch Plan",
-                    markdown = "# Launch Plan\n\nLaunch code: 1234\n\nSee [[Checklist]].",
-                    createdAt = 1,
-                    updatedAt = 2,
-                    revision = 1,
-                    contentHash = "hash",
-                    archived = false,
-                    tags = listOf("ops"),
-                    aliases = emptyList(),
-                    sourceInboxIds = emptyList(),
-                ),
-                outgoingLinks = listOf(
-                    VaultLink(
-                        id = "link-1",
-                        sourceNoteId = "note-1",
-                        targetNoteId = "note-2",
-                        rawTarget = "Checklist",
-                        label = null,
-                        status = LinkResolutionStatus.RESOLVED,
+            return when (noteId) {
+                "note-1" -> VaultReadableNote(
+                    note = note("note-1", "plans/launch.md", "Launch Plan", "# Launch Plan\n\nLaunch code: 1234\n\nSee [[Checklist]]."),
+                    outgoingLinks = listOf(
+                        VaultLink(
+                            id = "link-1",
+                            sourceNoteId = "note-1",
+                            targetNoteId = "note-2",
+                            rawTarget = "Checklist",
+                            label = null,
+                            status = LinkResolutionStatus.RESOLVED,
+                        ),
                     ),
-                ),
-                backlinks = listOf(
-                    VaultLink(
-                        id = "link-2",
-                        sourceNoteId = "note-3",
-                        targetNoteId = "note-1",
-                        rawTarget = "Launch Plan",
-                        label = "plan",
-                        status = LinkResolutionStatus.RESOLVED,
+                    backlinks = listOf(
+                        VaultLink(
+                            id = "link-2",
+                            sourceNoteId = "note-3",
+                            targetNoteId = "note-1",
+                            rawTarget = "Launch Plan",
+                            label = "plan",
+                            status = LinkResolutionStatus.RESOLVED,
+                        ),
                     ),
-                ),
-            )
+                )
+
+                "note-2" -> VaultReadableNote(
+                    note = note("note-2", "plans/checklist.md", "Checklist", "# Checklist\n\nConfirm the launch code before release."),
+                    outgoingLinks = emptyList(),
+                    backlinks = emptyList(),
+                )
+
+                "note-3" -> VaultReadableNote(
+                    note = note("note-3", "plans/review.md", "Release review", "# Release review\n\nThe launch plan must be approved."),
+                    outgoingLinks = emptyList(),
+                    backlinks = emptyList(),
+                )
+
+                else -> null
+            }
         }
+
+        private fun note(id: String, path: String, title: String, markdown: String) =
+            VaultNote(
+                id = id,
+                path = path,
+                title = title,
+                markdown = markdown,
+                createdAt = 1,
+                updatedAt = 2,
+                revision = 1,
+                contentHash = "hash",
+                archived = false,
+                tags = listOf("ops"),
+                aliases = emptyList(),
+                sourceInboxIds = emptyList(),
+            )
     }
 }
