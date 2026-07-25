@@ -18,21 +18,19 @@ import com.gemmory.vault.domain.ProcessedVaultNoteDraft
 import com.gemmory.vault.domain.ProposedVaultChangeSet
 import com.gemmory.vault.domain.UndoResult
 import com.gemmory.vault.domain.VaultAnswerGenerator
-import com.gemmory.vault.domain.VaultAnswerTools
 import com.gemmory.vault.domain.VaultEntry
+import com.gemmory.vault.domain.VaultFile
 import com.gemmory.vault.domain.VaultGeneratedAnswer
 import com.gemmory.vault.domain.VaultGraph
 import com.gemmory.vault.domain.VaultGraphEdge
 import com.gemmory.vault.domain.VaultGraphNode
 import com.gemmory.vault.domain.VaultLink
 import com.gemmory.vault.domain.VaultNote
-import com.gemmory.vault.domain.VaultNoteSummary
 import com.gemmory.vault.domain.VaultNoteProcessor
 import com.gemmory.vault.domain.VaultOperation
 import com.gemmory.vault.domain.VaultOperationPreview
 import com.gemmory.vault.domain.VaultProcessingExistingNote
 import com.gemmory.vault.domain.VaultProcessingInboxEntry
-import com.gemmory.vault.domain.VaultReadableNote
 import com.gemmory.vault.domain.VaultRepository
 import com.gemmory.vault.domain.VaultSearchResult
 import com.gemmory.vault.parser.MarkdownFrontmatterParser
@@ -534,39 +532,21 @@ class RoomVaultRepository(
     private suspend fun generateAnswer(
         question: String,
     ): VaultGeneratedAnswer? = try {
-        answerGenerator?.answer(question, RoomVaultAnswerTools())
+        val vaultFiles = withContext(dispatchers.io) {
+            dao.allActiveNotes().map { note ->
+                VaultFile(
+                    noteId = note.id,
+                    title = note.title,
+                    path = note.path,
+                    markdown = storage.read(note.path).orEmpty(),
+                )
+            }
+        }
+        answerGenerator?.answer(question, vaultFiles)
     } catch (ce: CancellationException) {
         throw ce
     } catch (_: Throwable) {
         null
-    }
-
-    private inner class RoomVaultAnswerTools : VaultAnswerTools {
-        override suspend fun listNotes(limit: Int): List<VaultNoteSummary> = withContext(dispatchers.io) {
-            dao.recentNotes(limit.coerceIn(1, MAX_TOOL_NOTES)).map { note ->
-                VaultNoteSummary(
-                    noteId = note.id,
-                    title = note.title,
-                    path = note.path,
-                    tags = split(note.tags),
-                    aliases = split(note.aliases),
-                    outgoingLinkCount = dao.outgoingLinks(note.id).size,
-                    backlinkCount = dao.backlinks(note.id).size,
-                )
-            }
-        }
-
-        override suspend fun searchNotes(query: String, limit: Int): List<VaultSearchResult> =
-            search(query, limit.coerceIn(1, MAX_TOOL_NOTES))
-
-        override suspend fun readNote(noteId: String): VaultReadableNote? = withContext(dispatchers.io) {
-            val note = dao.noteById(noteId) ?: return@withContext null
-            VaultReadableNote(
-                note = note.toDomain(storage.read(note.path).orEmpty()),
-                outgoingLinks = dao.outgoingLinks(note.id).map { it.toDomain() },
-                backlinks = dao.backlinks(note.id).map { it.toDomain() },
-            )
-        }
     }
 
     private suspend fun processInboxWithModel(entries: List<InboxEntryEntity>): List<ProcessedVaultNoteDraft>? = try {
@@ -906,7 +886,6 @@ class RoomVaultRepository(
     }
 
     private companion object {
-        const val MAX_TOOL_NOTES = 100
         val editableInboxStatuses = setOf(InboxEntryStatus.DRAFT.name, InboxEntryStatus.READY.name, InboxEntryStatus.FAILED.name)
         val tokenRegex = Regex("""[\p{L}\p{N}_]+""")
         val stopWords = setOf(
