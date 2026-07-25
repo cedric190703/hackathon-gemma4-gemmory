@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.gemmory.chat.domain.ChatMessage
 import com.gemmory.chat.domain.MessageRole
 import com.gemmory.chat.domain.MessageStatus
+import com.gemmory.ui.theme.GemmaMark
 
 /**
  * One chat bubble.
@@ -213,9 +214,11 @@ fun EmptyConversationHint(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxWidth().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        GemmaMark(Modifier.size(92.dp))
         Text(
             text = "Everything runs on this device",
             style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(top = 18.dp),
         )
         Text(
             text = "Ask Gemma 4 E2B anything. Your prompts never leave the phone.",

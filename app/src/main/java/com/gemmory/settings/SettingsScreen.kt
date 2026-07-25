@@ -25,6 +25,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.gemmory.inference.BackendPreference
@@ -57,6 +59,7 @@ fun SettingsScreen(
 
     Scaffold(
         modifier = modifier.testTag(TAG_SETTINGS_SCREEN),
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text("Settings") },
@@ -65,6 +68,12 @@ fun SettingsScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+                    navigationIconContentColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                ),
             )
         },
     ) { padding ->
@@ -114,7 +123,10 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            HorizontalDivider(Modifier.padding(vertical = 16.dp))
+            HorizontalDivider(
+                Modifier.padding(vertical = 16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
+            )
 
             SectionTitle("Model source")
             OutlinedTextField(
@@ -153,7 +165,10 @@ fun SettingsScreen(
                 )
             }
 
-            HorizontalDivider(Modifier.padding(vertical = 16.dp))
+            HorizontalDivider(
+                Modifier.padding(vertical = 16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
+            )
 
             SectionTitle("Installed model")
             when (val state = installState) {
@@ -171,7 +186,10 @@ fun SettingsScreen(
                 else -> Text("No model installed.", style = MaterialTheme.typography.bodyMedium)
             }
 
-            HorizontalDivider(Modifier.padding(vertical = 16.dp))
+            HorizontalDivider(
+                Modifier.padding(vertical = 16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
+            )
 
             SectionTitle("Privacy")
             Text(
@@ -182,7 +200,10 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            HorizontalDivider(Modifier.padding(vertical = 16.dp))
+            HorizontalDivider(
+                Modifier.padding(vertical = 16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
+            )
 
             SectionTitle("Model licence")
             Text(
